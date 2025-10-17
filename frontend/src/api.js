@@ -42,7 +42,12 @@ export async function sendMessageToAgent(userId, message, fileData = null) {
       console.log(`[API] Including file attachment: ${fileData.name}`);
     }
 
-    const response = await apiClient.post('/chat', payload);
+    // Use longer timeout for file uploads (5 minutes instead of 1 minute)
+    const requestTimeout = fileData ? 300000 : 60000; // 5 min for files, 1 min for text
+
+    const response = await apiClient.post('/chat', payload, {
+      timeout: requestTimeout
+    });
 
     console.log(`[API] Received response from backend`);
 

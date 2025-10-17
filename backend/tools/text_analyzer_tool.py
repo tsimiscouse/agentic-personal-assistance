@@ -29,20 +29,25 @@ def summarize_text_tool(text_input: str, is_pdf_path: bool = False) -> str:
     """
     Summarize any text content into clear, structured bullet points.
 
+    IMPORTANT: Pass the FULL TEXT CONTENT directly to this tool, not just filenames or references.
+    When document content is provided in the message, use that complete text as input.
+
     Perfect for:
     - Study materials (textbooks, lecture notes, research papers)
     - Reports (business, technical, academic)
     - Articles and blog posts
     - Documentation and guides
     - Meeting notes and transcripts
+    - Documents uploaded by users (PDF, DOCX, PPTX, etc.)
 
-    Input can be:
-    - Plain text: "Quantum computing is a revolutionary approach..."
-    - PDF file path: "/path/to/document.pdf" (set is_pdf_path=True)
+    Input examples:
+    - Plain text: "Quantum computing is a revolutionary approach... [full content]"
+    - Document content: "[Complete extracted text from user's uploaded document]"
+    - Long articles: "[Full article text here]"
 
     Args:
-        text_input: Text content or PDF file path to summarize
-        is_pdf_path: Set to True if input is a PDF file path
+        text_input: The FULL TEXT CONTENT to summarize (not a file path or reference)
+        is_pdf_path: Set to True ONLY if input is an actual file path (rarely used)
 
     Returns:
         str: Structured summary with main topics and key points

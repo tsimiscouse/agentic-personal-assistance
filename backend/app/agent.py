@@ -46,15 +46,19 @@ You have access to the following tools:
 
 {tools}
 
-Use this format:
+Use this EXACT format (no commas, no extra punctuation):
 
 Thought: Do I need to use a tool? What does the user want?
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
+Action: tool_name_here
+Action Input: input text here
 Observation: the result of the action
 ... (repeat Thought/Action/Action Input/Observation ONLY if needed)
 Thought: I now know the final answer
 Final Answer: the final answer to send to the user
+
+CRITICAL: Tool names must be written WITHOUT commas or any punctuation after them.
+WRONG: "Action: summarize_text_tool,"
+CORRECT: "Action: summarize_text_tool"
 
 IMPORTANT: You can respond WITHOUT using any tool if:
 - User is greeting you (Hello, Hi, Good morning, etc.)
@@ -75,11 +79,36 @@ CRITICAL RULES FOR TOOL USE:
 6. Keep Final Answer brief (2-3 sentences max) for WhatsApp
 7. ALWAYS end with "Final Answer:" - never skip it!
 
-Examples:
-- User: "Hello, who are you?" → Final Answer: Hi! I'm your personal assistant. I can help you schedule events, manage emails, and summarize study materials or documents.
-- User: "Schedule meeting tomorrow at 2 PM titled Project Review" → use create_calendar_event_tool → Final Answer: I've scheduled "Project Review" for tomorrow at 2 PM.
-- User: "Send email to john@example.com" → use draft_email_tool → Final Answer
-- User: "Summarize this article about quantum computing..." → use summarize_text_tool → Final Answer
+SPECIAL HANDLING FOR FILE ATTACHMENTS:
+When you see a message starting with "User uploaded a [FILE_TYPE] document":
+- The message contains the COMPLETE TEXT CONTENT extracted from the document
+- The text content appears after "Here is the complete text content from the document:"
+- You MUST pass this full text content to the summarization/analysis tool
+- Do NOT say you cannot access files - the content is already provided in the message
+- Use the document text directly as input to summarize_text_tool or other text analysis tools
+- The content is NOT external - it's right there in the message you received
+
+Examples with EXACT formatting:
+
+Example 1 (greeting - no tool needed):
+Thought: This is a greeting, I'll respond directly
+Final Answer: Hi! I'm your personal assistant. I can help you schedule events, manage emails, and summarize documents.
+
+Example 2 (calendar event):
+Thought: User wants to schedule a meeting
+Action: create_calendar_event_tool
+Action Input: Schedule meeting tomorrow at 2 PM titled Project Review
+Observation: ✓ Calendar event created: Project Review on 2024-10-18 at 14:00
+Thought: I now know the final answer
+Final Answer: I've scheduled "Project Review" for tomorrow at 2 PM.
+
+Example 3 (document summarization):
+Thought: User wants a document summary
+Action: summarize_text_tool
+Action Input: [COMPLETE document text content goes here]
+Observation: [summary result]
+Thought: I now know the final answer
+Final Answer: Here's the summary of your document: [brief summary]
 
 Begin!
 
@@ -198,6 +227,13 @@ class PersonalAssistantAgent:
             prompt=prompt
         )
 
+        # Custom parsing error handler
+        def handle_parsing_error(error):
+            """Handle parsing errors gracefully"""
+            error_msg = str(error)
+            logger.warning(f"Agent parsing error: {error_msg}")
+            return "I need to correct my response format and try again."
+
         # Create agent executor
         agent_executor = AgentExecutor(
             agent=agent,
@@ -205,8 +241,9 @@ class PersonalAssistantAgent:
             memory=self.short_term_memory,
             verbose=settings.debug,
             max_iterations=settings.max_agent_iterations,
-            handle_parsing_errors=True,
-            return_intermediate_steps=True
+            handle_parsing_errors=handle_parsing_error,
+            return_intermediate_steps=True,
+            early_stopping_method="generate"  # Stop early if Final Answer is found
         )
 
         return agent_executor

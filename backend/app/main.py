@@ -198,7 +198,14 @@ async def chat(
                 file_content = extraction_result['text']
                 file_type = extraction_result['file_type'].upper()
 
-                message = f"[User sent a {file_type} file: {request.file_name}]\n\nExtracted content:\n{file_content}\n\nUser's message: {request.message}"
+                # Format message to make it clear for the agent
+                message = f"""User uploaded a {file_type} document ({request.file_name}) and asked: "{request.message}"
+
+Here is the complete text content from the document:
+
+{file_content}
+
+Please process the document content above according to the user's request."""
 
                 logger.info(f"Successfully extracted {len(file_content)} characters from {file_type}")
             else:
