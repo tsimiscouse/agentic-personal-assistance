@@ -18,6 +18,7 @@ from googleapiclient.errors import HttpError
 import os.path
 import pickle
 import json
+import pytz
 
 settings = get_settings()
 
@@ -342,10 +343,18 @@ def _parse_event_with_llm(description: str) -> Dict:
             temperature=0.1
         )
 
+        # Get current time in user's timezone
+        user_tz = pytz.timezone(settings.default_timezone)
+        now_in_user_tz = datetime.now(user_tz)
+        tomorrow_in_user_tz = now_in_user_tz + timedelta(days=1)
+
         prompt = f"""Extract calendar event information from this description: "{description}"
 
-Today's date and time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-Current timezone: {settings.default_timezone}
+IMPORTANT TIMEZONE INFORMATION:
+- User's timezone: {settings.default_timezone} (GMT+7 / WIB - Western Indonesian Time)
+- Current date and time in user's timezone: {now_in_user_tz.strftime('%Y-%m-%d %H:%M %Z')}
+- All times mentioned by user are in {settings.default_timezone} timezone
+- When user says "23:59" they mean 23:59 in {settings.default_timezone}, NOT UTC
 
 Return ONLY a valid JSON object with these exact fields (no markdown, no explanations):
 {{
@@ -359,7 +368,9 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
 Rules:
 - Use 24-hour time format
 - Default duration: 1 hour
-- If date is "tomorrow", use {(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')}
+- Interpret ALL times as {settings.default_timezone} (GMT+7)
+- If date is "tomorrow", use {tomorrow_in_user_tz.strftime('%Y-%m-%d')}
+- If user says "19 october at 23:59", that means 2025-10-19T23:59:00 in their timezone
 - Return ONLY the JSON, nothing else
 
 JSON:"""
@@ -396,13 +407,15 @@ JSON:"""
 
 def _parse_event_basic(description: str) -> Dict:
     """Basic event parsing without LLM"""
-    now = datetime.now()
+    # Get current time in user's timezone
+    user_tz = pytz.timezone(settings.default_timezone)
+    now = datetime.now(user_tz)
 
-    # Default event
+    # Default event (1 hour from now, in user's timezone)
     event = {
         'summary': description[:50],
-        'start_time': (now + timedelta(hours=1)).isoformat(),
-        'end_time': (now + timedelta(hours=2)).isoformat(),
+        'start_time': (now + timedelta(hours=1)).replace(tzinfo=None).isoformat(),
+        'end_time': (now + timedelta(hours=2)).replace(tzinfo=None).isoformat(),
         'description': description
     }
 
@@ -411,18 +424,20 @@ def _parse_event_basic(description: str) -> Dict:
 
 def _parse_time_query(query: str) -> Dict:
     """Parse time range from query"""
-    now = datetime.now()
+    # Get current time in user's timezone
+    user_tz = pytz.timezone(settings.default_timezone)
+    now = datetime.now(user_tz)
     query_lower = query.lower()
 
     if 'today' in query_lower:
-        start = now.replace(hour=0, minute=0, second=0)
-        end = now.replace(hour=23, minute=59, second=59)
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now.replace(hour=23, minute=59, second=59, microsecond=0)
         description = "today"
 
     elif 'tomorrow' in query_lower:
         tomorrow = now + timedelta(days=1)
-        start = tomorrow.replace(hour=0, minute=0, second=0)
-        end = tomorrow.replace(hour=23, minute=59, second=59)
+        start = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = tomorrow.replace(hour=23, minute=59, second=59, microsecond=0)
         description = "tomorrow"
 
     elif 'week' in query_lower:
