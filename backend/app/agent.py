@@ -71,22 +71,40 @@ Thought: This is a greeting/casual question, I'll respond directly
 Final Answer: [your friendly response]
 
 CRITICAL RULES FOR TOOL USE:
-1. For calendar events → use create_calendar_event_tool ONCE then give Final Answer
-2. For email tasks → use email tools ONCE then give Final Answer
-3. For text summarization/study help → use text analyzer tools ONCE then give Final Answer
-4. After ANY tool succeeds (shows ✓ or returns content), IMMEDIATELY give Final Answer
+1. For calendar events → use create_calendar_event_tool ONCE then IMMEDIATELY give Final Answer
+2. For email tasks → use email tools ONCE then IMMEDIATELY give Final Answer
+3. For text summarization/study help → use text analyzer tools ONCE then IMMEDIATELY give Final Answer
+4. After ANY Observation (tool result), you MUST provide Final Answer in the NEXT line
 5. Do NOT call the same tool multiple times
 6. Keep Final Answer brief (2-3 sentences max) for WhatsApp
-7. ALWAYS end with "Final Answer:" - never skip it!
+7. MANDATORY: Every response MUST end with "Final Answer:" - this is REQUIRED, not optional!
 
-SPECIAL HANDLING FOR FILE ATTACHMENTS:
-When you see a message starting with "User uploaded a [FILE_TYPE] document":
-- The message contains the COMPLETE TEXT CONTENT extracted from the document
-- The text content appears after "Here is the complete text content from the document:"
-- You MUST pass this full text content to the summarization/analysis tool
-- Do NOT say you cannot access files - the content is already provided in the message
-- Use the document text directly as input to summarize_text_tool or other text analysis tools
-- The content is NOT external - it's right there in the message you received
+IMPORTANT: After you get an Observation from a tool, your NEXT line MUST be:
+Thought: I now know the final answer
+Final Answer: [your response to user]
+
+SPECIAL HANDLING FOR FILE ATTACHMENTS - CRITICAL INSTRUCTIONS:
+When you see "DOCUMENT CONTENT" with "---START OF DOCUMENT---" and "---END OF DOCUMENT---" markers:
+
+1. The text between these markers IS the complete document content
+2. COPY that entire text (from START to END markers) as your Action Input
+3. DO NOT use placeholder text like "[COMPLETE document...]" or ask for the content
+4. The document content is ALREADY provided - just use it directly
+
+CORRECT way to handle document:
+Question contains:
+  ---START OF DOCUMENT---
+  [actual document text here]
+  ---END OF DOCUMENT---
+
+Your response:
+Action: summarize_text_tool
+Action Input: [paste the actual text that was between START and END markers]
+
+WRONG ways (DO NOT DO THIS):
+❌ Action Input: [COMPLETE document text content goes here]
+❌ Saying "I don't have access to the file"
+❌ Asking user to provide the content again
 
 Examples with EXACT formatting:
 
@@ -102,13 +120,22 @@ Observation: ✓ Calendar event created: Project Review on 2024-10-18 at 14:00
 Thought: I now know the final answer
 Final Answer: I've scheduled "Project Review" for tomorrow at 2 PM.
 
-Example 3 (document summarization):
-Thought: User wants a document summary
+Example 3 (document analysis - PDF/DOCX/etc):
+Question: "DOCUMENT CONTENT (from PDF file "report.pdf"):
+---START OF DOCUMENT---
+This report discusses artificial intelligence trends in 2024. Key findings include increased adoption of LLMs, growth in AI safety research, and expansion of AI applications in healthcare.
+---END OF DOCUMENT---
+
+USER REQUEST: summarize this
+
+Instructions: Use the document content shown above..."
+
+Thought: I see document content between START and END markers. I'll pass that actual text to summarize_text_tool
 Action: summarize_text_tool
-Action Input: [COMPLETE document text content goes here]
-Observation: [summary result]
+Action Input: This report discusses artificial intelligence trends in 2024. Key findings include increased adoption of LLMs, growth in AI safety research, and expansion of AI applications in healthcare.
+Observation: [📋 Main Topic: AI trends in 2024... 🎯 Key Points: • LLM adoption increasing...]
 Thought: I now know the final answer
-Final Answer: Here's the summary of your document: [brief summary]
+Final Answer: Here's a summary of your document: The report covers AI trends in 2024, highlighting LLM adoption, AI safety research growth, and healthcare applications.
 
 Begin!
 
@@ -280,7 +307,22 @@ class PersonalAssistantAgent:
             })
 
             # Extract response
-            response = result.get("output", "I'm sorry, I couldn't process that.")
+            response = result.get("output")
+
+            # Check if agent provided output
+            if not response:
+                logger.warning(f"Agent did not provide output. Result keys: {result.keys()}")
+                # Try to extract useful info from intermediate steps
+                intermediate_steps = result.get("intermediate_steps", [])
+                if intermediate_steps:
+                    # Get the last tool observation
+                    last_observation = intermediate_steps[-1][1] if len(intermediate_steps[-1]) > 1 else None
+                    if last_observation:
+                        response = f"Here's what I found:\n\n{last_observation[:500]}"
+                    else:
+                        response = "I processed your request but couldn't format the response properly. Please try again."
+                else:
+                    response = "I'm sorry, I couldn't complete processing your request. Please try again with a simpler query."
 
             # Determine which tool was used
             tool_used = None

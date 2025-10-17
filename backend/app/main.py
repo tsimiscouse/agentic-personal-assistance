@@ -199,13 +199,15 @@ async def chat(
                 file_type = extraction_result['file_type'].upper()
 
                 # Format message to make it clear for the agent
-                message = f"""User uploaded a {file_type} document ({request.file_name}) and asked: "{request.message}"
-
-Here is the complete text content from the document:
-
+                # Put the content FIRST so the agent sees it immediately
+                message = f"""DOCUMENT CONTENT (from {file_type} file "{request.file_name}"):
+---START OF DOCUMENT---
 {file_content}
+---END OF DOCUMENT---
 
-Please process the document content above according to the user's request."""
+USER REQUEST: {request.message}
+
+Instructions: Use the document content shown above (between START and END markers) as input to the appropriate tool to fulfill the user's request."""
 
                 logger.info(f"Successfully extracted {len(file_content)} characters from {file_type}")
             else:
@@ -219,6 +221,16 @@ Please process the document content above according to the user's request."""
 
         # Process message
         result = agent.process_message(message)
+
+        # Check if result is valid
+        if not result or "response" not in result:
+            logger.error(f"Invalid agent result: {result}")
+            return ChatResponse(
+                response="I apologize, but I couldn't complete processing your request. Please try again.",
+                status="error",
+                tool_used=result.get("tool_used") if result else None,
+                conversation_id=None
+            )
 
         # Return response
         return ChatResponse(
