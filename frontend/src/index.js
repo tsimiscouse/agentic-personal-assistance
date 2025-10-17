@@ -16,9 +16,15 @@ import config from '../config/config.js';
  */
 async function handleMessage(message, contact, chat) {
   try {
-    // Ignore group messages (optional - can be enabled)
+    // Ignore group messages
     if (chat.isGroup) {
       console.log('[Handler] Ignoring group message');
+      return;
+    }
+
+    // Ignore status/broadcast/community messages
+    if (message.from === 'status@broadcast' || message.broadcast) {
+      console.log('[Handler] Ignoring broadcast/status message');
       return;
     }
 
@@ -44,10 +50,8 @@ async function handleMessage(message, contact, chat) {
 
       // Check if this number is allowed
       if (!config.allowedNumbers.includes(phoneNumber)) {
-        console.log(`[Handler] ⛔ Access denied for ${phoneNumber} (not in allowed list)`);
-        await message.reply(
-          "Sorry, this bot is currently restricted to authorized users only."
-        );
+        console.log(`[Handler] ⛔ Access denied for ${phoneNumber} - silently ignoring`);
+        // Don't reply to unauthorized users - just ignore silently
         return;
       }
 

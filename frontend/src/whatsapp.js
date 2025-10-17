@@ -14,25 +14,14 @@ import config from '../config/config.js';
  * @returns {Client} - Configured WhatsApp client
  */
 export function createWhatsAppClient() {
-  console.log('[WhatsApp] Creating client with Puppeteer bundled Chromium');
+  console.log('[WhatsApp] Creating client...');
 
   const client = new Client({
-    authStrategy: new LocalAuth({
-      clientId: config.whatsappSessionName,
-    }),
+    authStrategy: new LocalAuth(),
     puppeteer: {
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-      ],
-      timeout: 60000,
-    },
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
   });
 
   return client;
@@ -156,18 +145,14 @@ export async function initializeWhatsAppClient(onMessage) {
 
     console.log('[WhatsApp] Starting initialization...\n');
 
-    const initPromise = client.initialize();
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Initialization timeout after 2 minutes')), 120000);
-    });
-
-    await Promise.race([initPromise, timeoutPromise]);
+    await client.initialize();
 
     console.log('[WhatsApp] Client initialized successfully');
     return client;
 
   } catch (error) {
     console.error('[WhatsApp] Initialization error:', error.message);
+    console.error('[WhatsApp] Full error:', error);
     throw error;
   }
 }
