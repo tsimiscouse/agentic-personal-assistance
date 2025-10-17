@@ -26,7 +26,12 @@ from tools.email_tool import (
     send_draft_tool,
     improve_draft_tool
 )
-from tools.resume_tool import resume_tool, extract_skills_tool
+from tools.text_analyzer_tool import (
+    summarize_text_tool,
+    extract_key_points_tool,
+    explain_concept_tool,
+    compare_concepts_tool
+)
 
 settings = get_settings()
 
@@ -64,16 +69,17 @@ Final Answer: [your friendly response]
 CRITICAL RULES FOR TOOL USE:
 1. For calendar events → use create_calendar_event_tool ONCE then give Final Answer
 2. For email tasks → use email tools ONCE then give Final Answer
-3. For resume tasks → use resume tools ONCE then give Final Answer
-4. After ANY tool succeeds (shows ✓), IMMEDIATELY give Final Answer
+3. For text summarization/study help → use text analyzer tools ONCE then give Final Answer
+4. After ANY tool succeeds (shows ✓ or returns content), IMMEDIATELY give Final Answer
 5. Do NOT call the same tool multiple times
 6. Keep Final Answer brief (2-3 sentences max) for WhatsApp
 7. ALWAYS end with "Final Answer:" - never skip it!
 
 Examples:
-- User: "Hello, who are you?" → Final Answer: Hi! I'm your personal assistant. I can help you schedule events, manage emails, and work with your resume.
+- User: "Hello, who are you?" → Final Answer: Hi! I'm your personal assistant. I can help you schedule events, manage emails, and summarize study materials or documents.
 - User: "Schedule meeting tomorrow at 2 PM titled Project Review" → use create_calendar_event_tool → Final Answer: I've scheduled "Project Review" for tomorrow at 2 PM.
 - User: "Send email to john@example.com" → use draft_email_tool → Final Answer
+- User: "Summarize this article about quantum computing..." → use summarize_text_tool → Final Answer
 
 Begin!
 
@@ -123,9 +129,11 @@ def get_agent_tools() -> List[Tool]:
         send_draft_tool,
         improve_draft_tool,
 
-        # Resume Tools
-        resume_tool,
-        extract_skills_tool
+        # Text Analysis & Study Tools
+        summarize_text_tool,
+        extract_key_points_tool,
+        explain_concept_tool,
+        compare_concepts_tool
     ]
 
 

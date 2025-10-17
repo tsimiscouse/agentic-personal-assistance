@@ -22,16 +22,27 @@ const apiClient = axios.create({
  *
  * @param {string} userId - WhatsApp user ID (phone@c.us)
  * @param {string} message - User's message
+ * @param {Object} fileData - Optional file data {data: base64, name: filename, mime: mimetype}
  * @returns {Promise<Object>} - Agent's response
  */
-export async function sendMessageToAgent(userId, message) {
+export async function sendMessageToAgent(userId, message, fileData = null) {
   try {
     console.log(`[API] Sending message to backend for user ${userId}`);
 
-    const response = await apiClient.post('/chat', {
+    const payload = {
       user_id: userId,
       message: message,
-    });
+    };
+
+    // Add file data if present
+    if (fileData) {
+      payload.file_data = fileData.data;
+      payload.file_name = fileData.name;
+      payload.file_mime = fileData.mime;
+      console.log(`[API] Including file attachment: ${fileData.name}`);
+    }
+
+    const response = await apiClient.post('/chat', payload);
 
     console.log(`[API] Received response from backend`);
 

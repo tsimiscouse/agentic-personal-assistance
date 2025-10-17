@@ -54,8 +54,13 @@ bcrypt>=4.1.0
 # Validation & Parsing
 validators>=0.22.0
 
-# PDF Processing
-PyPDF2>=3.0.0
+# Document Processing
+PyPDF2>=3.0.0              # PDF files
+python-docx>=1.1.0         # Word documents (DOCX)
+python-pptx>=0.6.23        # PowerPoint presentations (PPTX)
+openpyxl>=3.1.2            # Excel files (XLSX)
+pandas>=2.0.0              # CSV and Excel analysis
+xlrd>=2.0.1                # Legacy Excel files (XLS)
 
 # Google Calendar API
 google-auth>=2.25.0

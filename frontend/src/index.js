@@ -34,12 +34,6 @@ async function handleMessage(message, contact, chat) {
       return;
     }
 
-    // Ignore empty messages or media-only messages
-    if (!message.body || message.body.trim() === '') {
-      console.log('[Handler] Ignoring empty message');
-      return;
-    }
-
     // Get user ID (WhatsApp chat ID)
     const userId = message.from;
 
@@ -58,13 +52,77 @@ async function handleMessage(message, contact, chat) {
       console.log(`[Handler] ✓ Access granted for ${phoneNumber}`);
     }
 
+    // Handle document/file attachments
+    let fileData = null;
+    let messageText = message.body || '';
+
+    // Check if message has media
+    if (message.hasMedia) {
+      try {
+        console.log(`[Handler] Message contains media attachment`);
+
+        // Download media
+        const media = await message.downloadMedia();
+
+        if (media) {
+          console.log(`[Handler] Media downloaded - Type: ${media.mimetype}, Size: ${media.data.length} chars`);
+
+          // Check if it's a supported document type
+          const supportedTypes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
+            'application/vnd.ms-excel', // XLS
+            'text/csv',
+            'text/plain',
+            'application/msword' // DOC
+          ];
+
+          if (supportedTypes.includes(media.mimetype)) {
+            // Get filename from message or create one
+            const filename = media.filename || `document.${getExtensionFromMimetype(media.mimetype)}`;
+
+            fileData = {
+              data: media.data, // Already base64
+              name: filename,
+              mime: media.mimetype
+            };
+
+            console.log(`[Handler] ✓ Document will be processed: ${filename}`);
+
+            // If no text message, add a default one
+            if (!messageText || messageText.trim() === '') {
+              messageText = 'Please summarize this document.';
+            }
+          } else {
+            console.log(`[Handler] Unsupported media type: ${media.mimetype}`);
+            // For images, audio, video - just process the text
+            if (!messageText || messageText.trim() === '') {
+              console.log('[Handler] Ignoring media-only message (unsupported type)');
+              return;
+            }
+          }
+        }
+      } catch (mediaError) {
+        console.error('[Handler] Error downloading media:', mediaError);
+        // Continue processing text message even if media download fails
+      }
+    }
+
+    // Check if we have any text to process
+    if (!messageText || messageText.trim() === '') {
+      console.log('[Handler] Ignoring empty message');
+      return;
+    }
+
     console.log(`[Handler] Processing message from ${userId}`);
 
     // Show typing indicator
     chat.sendStateTyping();
 
-    // Send message to backend agent
-    const result = await sendMessageToAgent(userId, message.body);
+    // Send message to backend agent (with file data if present)
+    const result = await sendMessageToAgent(userId, messageText, fileData);
 
     // Stop typing indicator
     chat.clearState();
@@ -95,6 +153,26 @@ async function handleMessage(message, contact, chat) {
       console.error('[Handler] Failed to send error message:', replyError);
     }
   }
+}
+
+/**
+ * Get file extension from MIME type
+ * @param {string} mimetype - MIME type
+ * @returns {string} - File extension
+ */
+function getExtensionFromMimetype(mimetype) {
+  const mimeMap = {
+    'application/pdf': 'pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'application/vnd.ms-excel': 'xls',
+    'text/csv': 'csv',
+    'text/plain': 'txt',
+    'application/msword': 'doc'
+  };
+
+  return mimeMap[mimetype] || 'bin';
 }
 
 /**

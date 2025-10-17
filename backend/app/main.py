@@ -15,6 +15,7 @@ import sys
 from config.settings import get_settings
 from database.connection import get_db, startup_db, shutdown_db
 from app.agent import create_agent_for_user
+from utils.file_extractor import extract_text_from_base64
 
 settings = get_settings()
 
@@ -97,6 +98,9 @@ class ChatRequest(BaseModel):
     """Request model for chat endpoint"""
     user_id: str = Field(..., description="WhatsApp user ID (phone@c.us)")
     message: str = Field(..., min_length=1, description="User's message")
+    file_data: str | None = Field(None, description="Base64 encoded file content (optional)")
+    file_name: str | None = Field(None, description="Original filename (optional)")
+    file_mime: str | None = Field(None, description="File MIME type (optional)")
 
     class Config:
         schema_extra = {
@@ -175,11 +179,39 @@ async def chat(
     try:
         logger.info(f"Received message from user {request.user_id}")
 
+        # Prepare message
+        message = request.message
+
+        # If file attached, extract text and prepend to message
+        if request.file_data and request.file_name:
+            logger.info(f"Processing file attachment: {request.file_name}")
+
+            # Extract text from file
+            extraction_result = extract_text_from_base64(
+                base64_data=request.file_data,
+                filename=request.file_name,
+                max_chars=15000
+            )
+
+            if extraction_result['success']:
+                # Prepend extracted text to message
+                file_content = extraction_result['text']
+                file_type = extraction_result['file_type'].upper()
+
+                message = f"[User sent a {file_type} file: {request.file_name}]\n\nExtracted content:\n{file_content}\n\nUser's message: {request.message}"
+
+                logger.info(f"Successfully extracted {len(file_content)} characters from {file_type}")
+            else:
+                # If extraction fails, inform the user
+                error_msg = extraction_result.get('error', 'Unknown error')
+                message = f"{request.message}\n\n[Note: I tried to read the file '{request.file_name}' but encountered an error: {error_msg}]"
+                logger.warning(f"File extraction failed: {error_msg}")
+
         # Create agent for user
         agent = create_agent_for_user(db, request.user_id)
 
         # Process message
-        result = agent.process_message(request.message)
+        result = agent.process_message(message)
 
         # Return response
         return ChatResponse(
