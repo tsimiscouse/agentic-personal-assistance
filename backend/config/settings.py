@@ -148,7 +148,7 @@ class Settings(BaseSettings):
         default="whatsapp-assistant-session",
         env="WHATSAPP_SESSION_NAME"
     )
-    whatsapp_timeout: int = Field(default=60000, env="WHATSAPP_TIMEOUT")
+    whatsapp_timeout: int = Field(default=180000, env="WHATSAPP_TIMEOUT")
 
     # Access Control - Allowed WhatsApp numbers (comma-separated)
     allowed_whatsapp_numbers: str = Field(

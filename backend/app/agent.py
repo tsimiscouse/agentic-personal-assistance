@@ -16,9 +16,7 @@ from memory.short_term import get_short_term_memory
 from memory.long_term import get_long_term_memory
 # Import all tools
 from tools.calendar_tool import (
-    create_calendar_event_tool,
-    list_calendar_events_tool,
-    delete_calendar_event_tool
+    smart_schedule_tool  # Smart all-in-one calendar tool (recommended)
 )
 from tools.email_tool import (
     read_emails_tool,
@@ -70,18 +68,60 @@ For these cases, skip Action/Observation and go directly to:
 Thought: This is a greeting/casual question, I'll respond directly
 Final Answer: [your friendly response]
 
-CRITICAL RULES FOR TOOL USE:
-1. For calendar events → use create_calendar_event_tool ONCE then IMMEDIATELY give Final Answer
+CRITICAL RULES FOR TOOL USE - FOLLOW EXACTLY:
+1. For calendar/schedule tasks → use smart_schedule_tool ONCE (it handles everything: check duplicates, create, list, delete)
 2. For email tasks → use email tools ONCE then IMMEDIATELY give Final Answer
 3. For text summarization/study help → use text analyzer tools ONCE then IMMEDIATELY give Final Answer
 4. After ANY Observation (tool result), you MUST provide Final Answer in the NEXT line
-5. Do NOT call the same tool multiple times
+5. NEVER EVER call the same tool twice - each tool does ALL the work internally
 6. Keep Final Answer brief (2-3 sentences max) for WhatsApp
 7. MANDATORY: Every response MUST end with "Final Answer:" - this is REQUIRED, not optional!
+
+🚫 FORBIDDEN - DO NOT DO THIS:
+- Do NOT repeat the same Action after getting an Observation
+- Do NOT call a tool multiple times with the same input
+- Do NOT skip providing Final Answer after an Observation
+- If you see an Observation with calendar events, customer emails, or summary → STOP and give Final Answer immediately
+
+SMART SCHEDULE TOOL - COMPLETE FLOW (ALL DONE INTERNALLY):
+- **CREATE**: Reads schedule → Checks overlap → Warns user OR creates → Returns result
+- **DELETE**: Reads schedule → Checks if exists → Deletes OR tells nothing to delete → Returns result
+- **UPDATE**: Reads schedule → Checks if exists → Updates OR tells not found → Returns result
+- **LIST**: Reads schedule → Returns list
+- You ONLY need to call this tool ONCE and it does EVERYTHING
+- The tool ALWAYS reads from live Google Calendar API (NOT from memory)
+- After ONE tool call, you get the complete result - STOP and give Final Answer
+
+FOLLOW-UP CONTEXT FOR EMAIL OPERATIONS:
+- When user drafts an email, the system asks if they want to send it or improve it
+- The system stores the context (draft details)
+- User will respond with "send it" or "improve it"
+- Look for "**IMPORTANT CONTEXT FROM LAST OPERATION:**" in the Question
+
+**HOW TO HANDLE EMAIL FOLLOW-UPS:**
+1. User creates a draft
+2. Context is stored automatically
+3. User says "send it" → use send_draft_tool
+4. OR user says "improve it" → use improve_draft_tool
+
+**Example:**
+User says: "send it"
+Action: send_draft_tool
+Action Input: [based on the draft ID from context]
 
 IMPORTANT: After you get an Observation from a tool, your NEXT line MUST be:
 Thought: I now know the final answer
 Final Answer: [your response to user]
+
+STOP CONDITION - When you see ANY of these in an Observation, you MUST stop and give Final Answer:
+✅ "Successfully created" → Stop, give Final Answer
+✅ "Calendar events for" with a list → Stop, give Final Answer
+✅ "Successfully deleted" → Stop, give Final Answer
+✅ Email content or draft → Stop, give Final Answer
+✅ Summary or key points → Stop, give Final Answer
+✅ Any data that answers the user's question → Stop, give Final Answer
+
+If the Observation contains the answer to the user's question, DO NOT call another tool. Just provide Final Answer.
 
 SPECIAL HANDLING FOR FILE ATTACHMENTS - CRITICAL INSTRUCTIONS:
 When you see "DOCUMENT CONTENT" with "---START OF DOCUMENT---" and "---END OF DOCUMENT---" markers:
@@ -112,13 +152,74 @@ Example 1 (greeting - no tool needed):
 Thought: This is a greeting, I'll respond directly
 Final Answer: Hi! I'm your personal assistant. I can help you schedule events, manage emails, and summarize documents.
 
-Example 2 (calendar event):
-Thought: User wants to schedule a meeting
-Action: create_calendar_event_tool
+Example 2 (calendar - create event):
+Thought: User wants to schedule a meeting, smart_schedule_tool will check for duplicates and create
+Action: smart_schedule_tool
 Action Input: Schedule meeting tomorrow at 2 PM titled Project Review
-Observation: ✓ Calendar event created: Project Review on 2024-10-18 at 14:00
+Observation: ✅ Successfully created and verified calendar event: Project Review on Friday at 02:00 PM. The event is now on your calendar!
 Thought: I now know the final answer
-Final Answer: I've scheduled "Project Review" for tomorrow at 2 PM.
+Final Answer: I've scheduled "Project Review" for tomorrow at 2 PM. ✓
+
+Example 2b (calendar - list events):
+Thought: User wants to see their schedule for today, smart_schedule_tool handles listing
+Action: smart_schedule_tool
+Action Input: Show my schedule for today
+Observation: 📅 Calendar events for today:
+
+1. NLP Homework
+   🕐 Saturday, October 18 at 07:00 PM
+
+2. Meeting with Client
+   🕐 Saturday, October 18 at 09:00 PM
+
+Thought: I now know the final answer
+Final Answer: You have 2 events today: NLP Homework at 7 PM and Meeting with Client at 9 PM.
+
+Example 2c (email - draft follow-up):
+Question: "**IMPORTANT CONTEXT FROM LAST OPERATION:**
+User's last request: Draft an email to John about project deadline
+My last response: ✅ Draft created. Subject: Project Deadline Update. Would you like me to send it or improve it?
+Tool used: draft_email_tool
+
+The current message 'send it' is a follow-up to the email operation.
+
+send it"
+
+Thought: User wants to send the draft email that was just created
+Action: send_draft_tool
+Action Input: Send the draft to John
+Observation: ✅ Email sent successfully to John
+Thought: I now know the final answer
+Final Answer: I've sent the email to John about the project deadline!
+
+Example 2d (calendar - delete event):
+Thought: User wants to delete schedule today, smart_schedule_tool handles deletion
+Action: smart_schedule_tool
+Action Input: Delete my schedule today
+Observation: ✅ Successfully deleted 2 event(s) today: 1. Morning Meeting 2. Lunch with Team
+Thought: I now know the final answer
+Final Answer: I've deleted 2 events from your calendar today.
+
+❌ WRONG EXAMPLE - DO NOT DO THIS:
+Question: "What is my schedule for today?"
+Thought: User wants to see their schedule
+Action: smart_schedule_tool
+Action Input: Show my schedule for today
+Observation: 📅 Calendar events for today:
+1. NLP Homework at 7 PM
+Thought: User wants to see their schedule  ← WRONG! Don't repeat!
+Action: smart_schedule_tool  ← WRONG! Don't call again!
+Action Input: Show my schedule for today  ← WRONG! This is looping!
+
+The CORRECT way:
+Question: "What is my schedule for today?"
+Thought: User wants to see their schedule
+Action: smart_schedule_tool
+Action Input: Show my schedule for today
+Observation: 📅 Calendar events for today:
+1. NLP Homework at 7 PM
+Thought: I now know the final answer  ← CORRECT! Stop here!
+Final Answer: You have 1 event today: NLP Homework at 7 PM.  ← CORRECT!
 
 Example 3 (document analysis - PDF/DOCX/etc):
 Question: "DOCUMENT CONTENT (from PDF file "report.pdf"):
@@ -173,11 +274,20 @@ def get_agent_tools() -> List[Tool]:
     Returns:
         List[Tool]: Configured tools
     """
+    from langchain.tools import Tool as LangChainTool
+
+    # Create calendar tool with return_direct=True to prevent looping
+    # This makes the tool return its result DIRECTLY to the user without agent processing
+    calendar_tool_direct = LangChainTool(
+        name=smart_schedule_tool.name,
+        description=smart_schedule_tool.description,
+        func=smart_schedule_tool.func,
+        return_direct=True  # KEY: This stops the looping!
+    )
+
     return [
-        # Calendar Tools
-        create_calendar_event_tool,
-        list_calendar_events_tool,
-        delete_calendar_event_tool,
+        # Smart Calendar Tool (Returns directly - no looping)
+        calendar_tool_direct,
 
         # Email Tools
         read_emails_tool,
@@ -212,6 +322,10 @@ class PersonalAssistantAgent:
     """
     Personal Assistant Agent using LangChain ReAct framework
     """
+
+    # Class-level storage for last calendar/email operation per user
+    # Format: {user_id: {"message": str, "response": str, "tool_used": str, "timestamp": datetime}}
+    _last_operation_context = {}
 
     def __init__(self, db: Session, user_id: str):
         """
@@ -259,7 +373,13 @@ class PersonalAssistantAgent:
             """Handle parsing errors gracefully"""
             error_msg = str(error)
             logger.warning(f"Agent parsing error: {error_msg}")
-            return "I need to correct my response format and try again."
+
+            # Check if agent is stuck in a loop (repeating same action)
+            if "Could not parse LLM output" in error_msg or "loop" in error_msg.lower():
+                logger.error("Agent appears to be in a loop - forcing stop")
+                return "Based on the tool result, I have the information needed. Let me provide the final answer now."
+
+            return "I need to provide a Final Answer based on the tool result."
 
         # Create agent executor
         agent_executor = AgentExecutor(
@@ -269,8 +389,7 @@ class PersonalAssistantAgent:
             verbose=settings.debug,
             max_iterations=settings.max_agent_iterations,
             handle_parsing_errors=handle_parsing_error,
-            return_intermediate_steps=True,
-            early_stopping_method="generate"  # Stop early if Final Answer is found
+            return_intermediate_steps=True
         )
 
         return agent_executor
@@ -288,18 +407,66 @@ class PersonalAssistantAgent:
         try:
             logger.info(f"Processing message from {self.user_id}: {message[:50]}...")
 
-            # Get relevant long-term memory context
-            similar_conversations = self.long_term_memory.search_similar_conversations(
-                query=message,
-                n_results=3
-            )
+            # Detect if message is about calendar or email operations
+            message_lower = message.lower()
+            is_calendar_email_operation = any(keyword in message_lower for keyword in [
+                'schedule', 'calendar', 'event', 'meeting', 'appointment',
+                'email', 'send', 'draft', 'message',
+                'jadwal', 'acara', 'pertemuan', 'janji', 'kirim', 'surat',
+                'delete', 'remove', 'cancel', 'update', 'change', 'reschedule',
+                'hapus', 'ubah', 'ganti', 'batalkan', 'rubah',
+                'today', 'tomorrow', 'tonight', 'hari ini', 'besok', 'malam ini'
+            ])
 
-            # Add context to input if relevant conversations found
+            # Detect if this is a follow-up response (short answers that need context)
+            # Only for email: "send" or "improve" commands
+            is_follow_up = any(keyword in message_lower for keyword in [
+                'send it', 'send', 'kirim', 'kirim aja',
+                'improve it', 'improve', 'perbaiki', 'edit'
+            ]) and len(message.split()) < 10  # Short email commands
+
             context = ""
-            if similar_conversations:
-                context = "\n\nRelevant past context:\n"
-                for conv in similar_conversations[:2]:  # Top 2
-                    context += f"- {conv['text'][:200]}...\n"
+
+            # Check if this is a follow-up to a previous email operation
+            if is_follow_up and self.user_id in self._last_operation_context:
+                last_op = self._last_operation_context[self.user_id]
+
+                # Only use last operation if it's recent (within 5 minutes)
+                from datetime import datetime, timedelta
+                if datetime.now() - last_op.get('timestamp', datetime.now()) < timedelta(minutes=5):
+                    context = f"\n\n**IMPORTANT CONTEXT FROM LAST OPERATION:**\n"
+                    context += f"User's last request: {last_op['message']}\n"
+                    context += f"My last response: {last_op['response'][:400]}\n"
+                    context += f"Tool used: {last_op['tool_used']}\n\n"
+                    context += f"**CRITICAL INSTRUCTION:**\n"
+                    context += f"The current message '{message}' is a follow-up to the email operation.\n"
+                    context += f"User wants to either SEND the draft or IMPROVE it.\n"
+                    context += f"If user says 'send it', use send_draft_tool.\n"
+                    context += f"If user says 'improve it', use improve_draft_tool.\n"
+                    logger.info(f"Using last operation context for follow-up: {last_op['tool_used']}")
+                    is_calendar_email_operation = True  # Treat as calendar/email to avoid long-term memory
+                else:
+                    # Context is too old, clear it
+                    del self._last_operation_context[self.user_id]
+                    logger.info("Last operation context expired, clearing")
+
+            # Only use long-term memory for general questions and summarization
+            # Do NOT use it for calendar/email operations (they must use live API data only)
+            if not is_calendar_email_operation and not context:
+                # Get relevant long-term memory context for general questions
+                similar_conversations = self.long_term_memory.search_similar_conversations(
+                    query=message,
+                    n_results=3
+                )
+
+                # Add context to input if relevant conversations found
+                if similar_conversations:
+                    context = "\n\nRelevant past context:\n"
+                    for conv in similar_conversations[:2]:  # Top 2
+                        context += f"- {conv['text'][:200]}...\n"
+                    logger.info("Using long-term memory for general question")
+            elif is_calendar_email_operation and not is_follow_up:
+                logger.info("Calendar/Email operation detected - using live API data only, skipping long-term memory")
 
             # Run agent
             result = self.agent.invoke({
@@ -332,6 +499,24 @@ class PersonalAssistantAgent:
                 last_action = intermediate_steps[-1][0] if intermediate_steps[-1] else None
                 if last_action:
                     tool_used = last_action.tool
+
+            # Store last operation context ONLY for email tools (for follow-up responses)
+            # Calendar operations no longer use custom cache
+            if tool_used in ['read_emails_tool', 'draft_email_tool', 'send_draft_tool', 'improve_draft_tool']:
+                from datetime import datetime
+                self._last_operation_context[self.user_id] = {
+                    'message': message,
+                    'response': response,
+                    'tool_used': tool_used,
+                    'timestamp': datetime.now()
+                }
+                logger.info(f"Stored last operation context for user {self.user_id}: {tool_used}")
+
+            # Clear last operation context if this was a successful follow-up
+            # (i.e., user confirmed action and it completed)
+            elif is_follow_up and self.user_id in self._last_operation_context:
+                logger.info(f"Clearing last operation context after successful follow-up")
+                del self._last_operation_context[self.user_id]
 
             # Save to long-term memory
             conversation_id = self.long_term_memory.save_conversation(

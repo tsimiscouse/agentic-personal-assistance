@@ -19,7 +19,7 @@ const config = {
 
   // WhatsApp Configuration
   whatsappSessionName: process.env.WHATSAPP_SESSION_NAME || 'whatsapp-assistant-session',
-  whatsappTimeout: parseInt(process.env.WHATSAPP_TIMEOUT) || 60000,
+  whatsappTimeout: parseInt(process.env.WHATSAPP_TIMEOUT) || 180000,
 
   // Access Control
   allowedNumbers: process.env.ALLOWED_WHATSAPP_NUMBERS
