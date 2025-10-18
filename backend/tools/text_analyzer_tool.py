@@ -274,26 +274,80 @@ Keep it conversational, clear, and helpful for studying."""
 # ============================================
 
 @tool
-def answer_document_question_tool(question: str, document_content: str) -> str:
+def answer_document_question_tool(input_text: str) -> str:
     """
     Answer specific questions about a document.
 
-    Use this when user asks specific questions about a document they uploaded.
+    Use this when user asks questions about a document they uploaded.
+    The input should contain BOTH the question AND the document content.
+
+    CRITICAL: You MUST extract the document content from between the markers:
+    ---START OF DOCUMENT---
+    [document text]
+    ---END OF DOCUMENT---
+
+    Then extract the question from the user's request.
+
     Perfect for:
     - "What is [specific concept] in the document?"
     - "Explain [term] from the document"
     - "What does the document say about [topic]?"
-    - "Where is [concept] mentioned?"
+    - Questions after document upload
 
     Args:
-        question: User's specific question
-        document_content: The complete document text
+        input_text: Combined text containing both question and document content with markers
 
     Returns:
         str: Direct answer to the question based on document content
     """
     try:
+        import re
+
+        # Extract document content between markers
+        doc_match = re.search(r'---START OF DOCUMENT---\s*(.*?)\s*---END OF DOCUMENT---', input_text, re.DOTALL)
+
+        if not doc_match:
+            return "❌ Error: Document content not found. Please ensure the document is properly formatted with START/END markers."
+
+        document_content = doc_match.group(1).strip()
+
+        # Extract the question - look for common patterns
+        question = None
+
+        # Try to find explicit question markers
+        question_patterns = [
+            r'USER REQUEST:\s*(.+?)(?:\n|$)',
+            r'QUESTION:\s*(.+?)(?:\n|$)',
+            r'question:\s*["\'](.+?)["\']',
+            r'Question:\s*(.+?)(?:\n|$)'
+        ]
+
+        for pattern in question_patterns:
+            q_match = re.search(pattern, input_text, re.IGNORECASE)
+            if q_match:
+                question = q_match.group(1).strip()
+                break
+
+        # If no explicit marker, try to extract from instruction text
+        if not question:
+            # Look for instruction to use the tool with a question
+            inst_match = re.search(r'with the question:\s*["\'](.+?)["\']', input_text, re.IGNORECASE)
+            if inst_match:
+                question = inst_match.group(1).strip()
+
+        # Last resort: extract text before the document markers
+        if not question:
+            before_doc = input_text.split('---START OF DOCUMENT---')[0].strip()
+            # Remove instruction text
+            before_doc = re.sub(r'\*\*INSTRUCTION:\*\*.*', '', before_doc, flags=re.DOTALL).strip()
+            before_doc = re.sub(r'\*\*DOCUMENT CONTEXT.*', '', before_doc, flags=re.DOTALL).strip()
+            if before_doc and len(before_doc) < 200:  # Reasonable question length
+                question = before_doc
+            else:
+                question = "What is this document about?"  # Default question
+
         logger.info(f"Answering question about document: {question[:100]}")
+        logger.info(f"Document content length: {len(document_content)} chars")
 
         # Truncate document if too long
         if len(document_content) > MAX_TEXT_LENGTH:
@@ -303,7 +357,7 @@ def answer_document_question_tool(question: str, document_content: str) -> str:
         llm = ChatGroq(
             api_key=settings.groq_api_key,
             model_name=settings.groq_model,
-            temperature=0.3,  # Balanced for accuracy
+            temperature=0.3,
             max_tokens=600
         )
 
@@ -341,7 +395,7 @@ IMPORTANT:
         return answer.strip()
 
     except Exception as e:
-        logger.error(f"Error answering document question: {e}")
+        logger.error(f"Error answering document question: {e}", exc_info=True)
         return "I had trouble finding that information in the document. Could you rephrase your question?"
 
 

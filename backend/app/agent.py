@@ -239,6 +239,26 @@ Observation: [📋 Main Topic: AI trends in 2024... 🎯 Key Points: • LLM ado
 Thought: I now know the final answer
 Final Answer: Here's a summary of your document: The report covers AI trends in 2024, highlighting LLM adoption, AI safety research growth, and healthcare applications.
 
+Example 4 (document Q&A - follow-up question):
+Question: "**DOCUMENT CONTEXT (from previous upload):**
+---START OF DOCUMENT---
+Chapter 3: Transformers use positional encoding to handle sequence order. The encoding adds position information to each token embedding using sine and cosine functions.
+---END OF DOCUMENT---
+
+**INSTRUCTION:** Use answer_document_question_tool with the question: 'what is positional encoding?' and the document content above."
+
+Thought: User is asking about positional encoding from their document. I need to pass the ENTIRE input to answer_document_question_tool
+Action: answer_document_question_tool
+Action Input: **DOCUMENT CONTEXT (from previous upload):**
+---START OF DOCUMENT---
+Chapter 3: Transformers use positional encoding to handle sequence order. The encoding adds position information to each token embedding using sine and cosine functions.
+---END OF DOCUMENT---
+
+**INSTRUCTION:** Use answer_document_question_tool with the question: 'what is positional encoding?' and the document content above.
+Observation: [📖 Answer: Based on the document, positional encoding is a technique used in Transformers...]
+Thought: I now know the final answer
+Final Answer: Based on your document, positional encoding is used in Transformers to handle sequence order by adding position information to token embeddings using sine and cosine functions.
+
 Begin!
 
 Previous conversation:
@@ -537,12 +557,14 @@ class PersonalAssistantAgent:
                 if datetime.now() - last_op.get('timestamp', datetime.now()) < timedelta(minutes=30):
                     cached_document = last_op.get('document_content', '')
                     if cached_document:
-                        # Inject document content into the message for the Q&A tool
+                        # Inject document content in the format the tool expects
+                        # The tool will parse both the question and document from this
                         context = f"\n\n**DOCUMENT CONTEXT (from previous upload):**\n"
                         context += f"---START OF DOCUMENT---\n"
                         context += f"{cached_document}\n"
                         context += f"---END OF DOCUMENT---\n\n"
-                        context += f"**INSTRUCTION:** Use answer_document_question_tool with the question: '{message}' and the document content above.\n"
+                        context += f"USER QUESTION: {message}\n\n"
+                        context += f"**INSTRUCTION:** Use answer_document_question_tool and pass the ENTIRE input above (including document markers and question) as the Action Input.\n"
                         logger.info(f"Injecting cached document ({len(cached_document)} chars) for follow-up question")
                 else:
                     # Document cache expired
