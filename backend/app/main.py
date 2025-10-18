@@ -315,6 +315,107 @@ async def clear_session(
         )
 
 
+@app.delete("/memory/{user_id}")
+async def clear_long_term_memory(
+    user_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Clear long-term memory for a user (PostgreSQL + ChromaDB)
+
+    This deletes ALL conversation history for the specified user.
+    Use with caution!
+
+    Args:
+        user_id: WhatsApp user ID
+        db: Database session (injected)
+
+    Returns:
+        dict: Confirmation message with count of deleted conversations
+    """
+    try:
+        # Get conversation count before deletion
+        agent = create_agent_for_user(db, user_id)
+        count = agent.long_term_memory.get_conversation_count()
+
+        # Delete all conversations
+        agent.long_term_memory.delete_all_conversations()
+
+        # Also clear short-term memory
+        agent.clear_session()
+
+        return {
+            "message": f"Deleted {count} conversations for user {user_id}",
+            "conversations_deleted": count,
+            "status": "success"
+        }
+
+    except Exception as e:
+        logger.error(f"Error clearing long-term memory: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to clear long-term memory"
+        )
+
+
+@app.post("/memory/reset-all")
+async def reset_all_memory(
+    confirm: bool = False,
+    db: Session = Depends(get_db)
+):
+    """
+    ⚠️ DANGER: Reset ALL ChromaDB vector store and PostgreSQL conversations
+
+    This is a nuclear option that deletes EVERYTHING for ALL users.
+    Use only in development/testing!
+
+    Args:
+        confirm: Must be true to execute (safety check)
+        db: Database session (injected)
+
+    Returns:
+        dict: Confirmation message
+    """
+    if not confirm:
+        return {
+            "message": "Safety check failed. Set confirm=true to execute.",
+            "status": "aborted",
+            "warning": "This will delete ALL data for ALL users!"
+        }
+
+    try:
+        from database.connection import get_chroma_manager
+        from models.conversation import Conversation
+
+        # Get total count before deletion
+        total_conversations = db.query(Conversation).count()
+
+        # Delete all from PostgreSQL
+        db.query(Conversation).delete()
+        db.commit()
+
+        # Reset ChromaDB collection (properly closes connections first)
+        chroma = get_chroma_manager()
+        chroma.reset_collection()
+
+        logger.warning(f"⚠️ RESET ALL: Deleted {total_conversations} conversations for all users")
+
+        return {
+            "message": f"Successfully reset all memory. Deleted {total_conversations} conversations.",
+            "conversations_deleted": total_conversations,
+            "status": "success",
+            "warning": "All data has been permanently deleted!"
+        }
+
+    except Exception as e:
+        logger.error(f"Error resetting all memory: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reset memory: {str(e)}"
+        )
+
+
 # ============================================
 # Error Handlers
 # ============================================
