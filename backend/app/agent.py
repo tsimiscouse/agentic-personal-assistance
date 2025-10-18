@@ -439,14 +439,26 @@ class PersonalAssistantAgent:
 
             # Detect if message is about calendar or email operations
             message_lower = message.lower()
-            is_calendar_email_operation = any(keyword in message_lower for keyword in [
-                'schedule', 'calendar', 'event', 'meeting', 'appointment',
-                'email', 'send', 'draft', 'message',
-                'jadwal', 'acara', 'pertemuan', 'janji', 'kirim', 'surat',
-                'delete', 'remove', 'cancel', 'update', 'change', 'reschedule',
-                'hapus', 'ubah', 'ganti', 'batalkan', 'rubah',
-                'today', 'tomorrow', 'tonight', 'hari ini', 'besok', 'malam ini'
+
+            # IMPORTANT: Skip calendar/email detection if this is a document summarization task
+            # Document content may contain keywords like "meeting", "schedule" which would incorrectly trigger detection
+            is_document_task = any(marker in message for marker in [
+                'DOCUMENT CONTENT',
+                '---START OF DOCUMENT---',
+                '---END OF DOCUMENT---'
             ])
+
+            # Only check keywords if NOT a document task
+            is_calendar_email_operation = False
+            if not is_document_task:
+                is_calendar_email_operation = any(keyword in message_lower for keyword in [
+                    'schedule', 'calendar', 'event', 'meeting', 'appointment',
+                    'email', 'send', 'draft', 'message',
+                    'jadwal', 'acara', 'pertemuan', 'janji', 'kirim', 'surat',
+                    'delete', 'remove', 'cancel', 'update', 'change', 'reschedule',
+                    'hapus', 'ubah', 'ganti', 'batalkan', 'rubah',
+                    'today', 'tomorrow', 'tonight', 'hari ini', 'besok', 'malam ini'
+                ])
 
             # Detect if this is a follow-up response (short answers that need context)
             # Only for email: "send" or "improve" commands
@@ -497,14 +509,27 @@ class PersonalAssistantAgent:
                     logger.info("Using long-term memory for general question")
             elif is_calendar_email_operation and not is_follow_up:
                 logger.info("Calendar/Email operation detected - using live API data only, skipping long-term memory")
+            elif is_document_task:
+                logger.info("Document summarization task detected - will use appropriate text analysis tool")
 
             # Run agent
-            result = self.agent.invoke({
-                "input": message + context
-            })
+            try:
+                result = self.agent.invoke({
+                    "input": message + context
+                })
+            except Exception as invoke_error:
+                logger.error(f"Agent invocation failed: {invoke_error}", exc_info=True)
+                # Re-raise to be caught by outer exception handler
+                raise Exception(f"Agent processing failed: {str(invoke_error)}")
 
             # Extract response
+            # When return_direct=True, the output is returned directly from the tool
             response = result.get("output")
+
+            # Debug logging to see result structure
+            if not response:
+                logger.warning(f"No 'output' in result. Result keys: {result.keys()}")
+                logger.debug(f"Full result: {result}")
 
             # Check if agent provided output
             if not response:
