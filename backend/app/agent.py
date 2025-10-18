@@ -28,7 +28,8 @@ from tools.text_analyzer_tool import (
     summarize_text_tool,
     extract_key_points_tool,
     explain_concept_tool,
-    compare_concepts_tool
+    compare_concepts_tool,
+    answer_document_question_tool  # New Q&A tool
 )
 
 settings = get_settings()
@@ -315,6 +316,14 @@ def get_agent_tools() -> List[Tool]:
         return_direct=True  # Prevents looping on comparisons
     )
 
+    # Document Q&A tool for answering specific questions
+    answer_document_question_direct = LangChainTool(
+        name=answer_document_question_tool.name,
+        description=answer_document_question_tool.description,
+        func=answer_document_question_tool.func,
+        return_direct=True  # Direct answers to user
+    )
+
     return [
         # Smart Calendar Tool (Returns directly - no looping)
         calendar_tool_direct,
@@ -329,7 +338,8 @@ def get_agent_tools() -> List[Tool]:
         summarize_direct,
         extract_key_points_direct,
         explain_concept_direct,
-        compare_concepts_direct
+        compare_concepts_direct,
+        answer_document_question_direct  # Document Q&A
     ]
 
 
@@ -353,8 +363,9 @@ class PersonalAssistantAgent:
     Personal Assistant Agent using LangChain ReAct framework
     """
 
-    # Class-level storage for last calendar/email operation per user
-    # Format: {user_id: {"message": str, "response": str, "tool_used": str, "timestamp": datetime}}
+    # Class-level storage for last operation per user
+    # Format: {user_id: {"message": str, "response": str, "tool_used": str, "timestamp": datetime, "document_content": str}}
+    # Used for: email follow-ups ("send it", "improve it") and document Q&A follow-ups
     _last_operation_context = {}
 
     def __init__(self, db: Session, user_id: str):
@@ -448,6 +459,16 @@ class PersonalAssistantAgent:
                 '---END OF DOCUMENT---'
             ])
 
+            # Extract and cache document content if present
+            document_content = None
+            if is_document_task:
+                # Extract document content between markers
+                import re
+                doc_match = re.search(r'---START OF DOCUMENT---\s*(.*?)\s*---END OF DOCUMENT---', message, re.DOTALL)
+                if doc_match:
+                    document_content = doc_match.group(1).strip()
+                    logger.info(f"Extracted document content: {len(document_content)} characters")
+
             # Only check keywords if NOT a document task
             is_calendar_email_operation = False
             if not is_document_task:
@@ -461,16 +482,31 @@ class PersonalAssistantAgent:
                 ])
 
             # Detect if this is a follow-up response (short answers that need context)
-            # Only for email: "send" or "improve" commands
-            is_follow_up = any(keyword in message_lower for keyword in [
+            # For email: "send" or "improve" commands
+            # For documents: questions about previously uploaded document
+            is_email_follow_up = any(keyword in message_lower for keyword in [
                 'send it', 'send', 'kirim', 'kirim aja',
                 'improve it', 'improve', 'perbaiki', 'edit'
             ]) and len(message.split()) < 10  # Short email commands
 
+            # Detect document-related follow-up questions
+            # User asks questions like "what is X?" after uploading a document
+            is_document_follow_up = False
+            if not is_document_task and not is_calendar_email_operation and self.user_id in self._last_operation_context:
+                last_op = self._last_operation_context[self.user_id]
+                # Check if last operation had a document and current message is a question
+                if last_op.get('document_content') and ('what' in message_lower or 'who' in message_lower or
+                    'where' in message_lower or 'when' in message_lower or 'why' in message_lower or
+                    'how' in message_lower or 'explain' in message_lower or 'tell me' in message_lower or
+                    'apa' in message_lower or 'siapa' in message_lower or 'dimana' in message_lower or
+                    'jelaskan' in message_lower):
+                    is_document_follow_up = True
+                    logger.info("Detected document-related follow-up question")
+
             context = ""
 
             # Check if this is a follow-up to a previous email operation
-            if is_follow_up and self.user_id in self._last_operation_context:
+            if is_email_follow_up and self.user_id in self._last_operation_context:
                 last_op = self._last_operation_context[self.user_id]
 
                 # Only use last operation if it's recent (within 5 minutes)
@@ -491,6 +527,28 @@ class PersonalAssistantAgent:
                     # Context is too old, clear it
                     del self._last_operation_context[self.user_id]
                     logger.info("Last operation context expired, clearing")
+
+            # Check if this is a follow-up question about a document
+            elif is_document_follow_up and self.user_id in self._last_operation_context:
+                last_op = self._last_operation_context[self.user_id]
+
+                # Only use document if recent (within 30 minutes for study sessions)
+                from datetime import datetime, timedelta
+                if datetime.now() - last_op.get('timestamp', datetime.now()) < timedelta(minutes=30):
+                    cached_document = last_op.get('document_content', '')
+                    if cached_document:
+                        # Inject document content into the message for the Q&A tool
+                        context = f"\n\n**DOCUMENT CONTEXT (from previous upload):**\n"
+                        context += f"---START OF DOCUMENT---\n"
+                        context += f"{cached_document}\n"
+                        context += f"---END OF DOCUMENT---\n\n"
+                        context += f"**INSTRUCTION:** Use answer_document_question_tool with the question: '{message}' and the document content above.\n"
+                        logger.info(f"Injecting cached document ({len(cached_document)} chars) for follow-up question")
+                else:
+                    # Document cache expired
+                    if 'document_content' in last_op:
+                        del self._last_operation_context[self.user_id]
+                        logger.info("Document cache expired, clearing")
 
             # Only use long-term memory for general questions and summarization
             # Do NOT use it for calendar/email operations (they must use live API data only)
@@ -555,10 +613,12 @@ class PersonalAssistantAgent:
                 if last_action:
                     tool_used = last_action.tool
 
-            # Store last operation context ONLY for email tools (for follow-up responses)
+            # Store last operation context for email and document tools (for follow-up responses)
             # Calendar operations no longer use custom cache
+            from datetime import datetime
+
+            # Store email operations
             if tool_used in ['read_emails_tool', 'draft_email_tool', 'send_draft_tool', 'improve_draft_tool']:
-                from datetime import datetime
                 self._last_operation_context[self.user_id] = {
                     'message': message,
                     'response': response,
@@ -567,9 +627,19 @@ class PersonalAssistantAgent:
                 }
                 logger.info(f"Stored last operation context for user {self.user_id}: {tool_used}")
 
-            # Clear last operation context if this was a successful follow-up
-            # (i.e., user confirmed action and it completed)
-            elif is_follow_up and self.user_id in self._last_operation_context:
+            # Store document operations (for follow-up questions within 30 minutes)
+            elif document_content and tool_used in ['summarize_text_tool', 'extract_key_points_tool', 'answer_document_question_tool']:
+                self._last_operation_context[self.user_id] = {
+                    'message': message,
+                    'response': response,
+                    'tool_used': tool_used,
+                    'document_content': document_content,  # Cache the document!
+                    'timestamp': datetime.now()
+                }
+                logger.info(f"Stored document context for user {self.user_id}: {len(document_content)} chars, tool: {tool_used}")
+
+            # Clear last operation context if this was a successful email follow-up
+            elif is_email_follow_up and self.user_id in self._last_operation_context:
                 logger.info(f"Clearing last operation context after successful follow-up")
                 del self._last_operation_context[self.user_id]
 

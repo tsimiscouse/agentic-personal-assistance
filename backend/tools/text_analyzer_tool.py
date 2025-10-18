@@ -270,6 +270,82 @@ Keep it conversational, clear, and helpful for studying."""
 
 
 # ============================================
+# DOCUMENT Q&A TOOL (for specific questions)
+# ============================================
+
+@tool
+def answer_document_question_tool(question: str, document_content: str) -> str:
+    """
+    Answer specific questions about a document.
+
+    Use this when user asks specific questions about a document they uploaded.
+    Perfect for:
+    - "What is [specific concept] in the document?"
+    - "Explain [term] from the document"
+    - "What does the document say about [topic]?"
+    - "Where is [concept] mentioned?"
+
+    Args:
+        question: User's specific question
+        document_content: The complete document text
+
+    Returns:
+        str: Direct answer to the question based on document content
+    """
+    try:
+        logger.info(f"Answering question about document: {question[:100]}")
+
+        # Truncate document if too long
+        if len(document_content) > MAX_TEXT_LENGTH:
+            logger.info(f"Truncating document from {len(document_content)} to {MAX_TEXT_LENGTH} chars")
+            document_content = document_content[:MAX_TEXT_LENGTH]
+
+        llm = ChatGroq(
+            api_key=settings.groq_api_key,
+            model_name=settings.groq_model,
+            temperature=0.3,  # Balanced for accuracy
+            max_tokens=600
+        )
+
+        prompt = f"""You are helping a user understand their document. Answer their specific question based ONLY on the document content provided.
+
+DOCUMENT CONTENT:
+{document_content}
+
+USER QUESTION: {question}
+
+Provide a clear, direct answer in this format:
+
+📖 **Answer:**
+[Direct answer to the question based on the document]
+
+📝 **Details:**
+• [Relevant detail 1 from document]
+• [Relevant detail 2 from document]
+• [Relevant detail 3 from document]
+
+💡 **Context:**
+[Brief additional context from the document if helpful]
+
+IMPORTANT:
+- Answer ONLY based on what's in the document
+- If the information isn't in the document, say so clearly
+- Quote or reference specific parts when helpful
+- Keep the answer focused and relevant"""
+
+        response = llm.invoke(prompt)
+        answer = response.content if hasattr(response, 'content') else str(response)
+
+        logger.info("Document question answered successfully")
+
+        return answer.strip()
+
+    except Exception as e:
+        logger.error(f"Error answering document question: {e}")
+        return "I had trouble finding that information in the document. Could you rephrase your question?"
+
+
+# ============================================
 # COMPARISON TOOL (for study materials)
 # ============================================
 
