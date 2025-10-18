@@ -285,6 +285,36 @@ def get_agent_tools() -> List[Tool]:
         return_direct=True  # KEY: This stops the looping!
     )
 
+    # Create text analysis tools with return_direct=True to prevent looping
+    # These tools return formatted responses that should go directly to user
+    summarize_direct = LangChainTool(
+        name=summarize_text_tool.name,
+        description=summarize_text_tool.description,
+        func=summarize_text_tool.func,
+        return_direct=True  # Prevents agent from reprocessing formatted summary
+    )
+
+    extract_key_points_direct = LangChainTool(
+        name=extract_key_points_tool.name,
+        description=extract_key_points_tool.description,
+        func=extract_key_points_tool.func,
+        return_direct=True  # Prevents looping on key points
+    )
+
+    explain_concept_direct = LangChainTool(
+        name=explain_concept_tool.name,
+        description=explain_concept_tool.description,
+        func=explain_concept_tool.func,
+        return_direct=True  # Prevents looping on explanations
+    )
+
+    compare_concepts_direct = LangChainTool(
+        name=compare_concepts_tool.name,
+        description=compare_concepts_tool.description,
+        func=compare_concepts_tool.func,
+        return_direct=True  # Prevents looping on comparisons
+    )
+
     return [
         # Smart Calendar Tool (Returns directly - no looping)
         calendar_tool_direct,
@@ -295,11 +325,11 @@ def get_agent_tools() -> List[Tool]:
         send_draft_tool,
         improve_draft_tool,
 
-        # Text Analysis & Study Tools
-        summarize_text_tool,
-        extract_key_points_tool,
-        explain_concept_tool,
-        compare_concepts_tool
+        # Text Analysis & Study Tools (Returns directly - no looping)
+        summarize_direct,
+        extract_key_points_direct,
+        explain_concept_direct,
+        compare_concepts_direct
     ]
 
 
