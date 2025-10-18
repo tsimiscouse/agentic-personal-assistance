@@ -642,9 +642,8 @@ def _smart_create(request: str) -> str:
             response += f"But you already have:\n"
             for i, overlap in enumerate(overlap_details, 1):
                 response += f"{i}. {overlap['title']} ({overlap['start'].strftime('%I:%M %p')} - {overlap['end'].strftime('%I:%M %p')})\n"
-            response += f"\n❌ Cannot create due to conflict.\n\n"
+            response += f"\n❌ Cannot create due to conflict.\n"
             response += f"**Please update one of the conflicting events to a different time:**\n"
-            response += f"Example: 'Update {overlap_details[0]['title']} to 5 PM' or 'Change {overlap_details[0]['title']} to tomorrow at 3 PM'"
 
             logger.info("Overlap detected, asking user to update conflicting event")
             return response
