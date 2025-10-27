@@ -247,6 +247,7 @@ data/*
 # Google OAuth credentials
 backend/config/token.pickle
 backend/config/google_credentials.json
+backend/config/gmail_token.json
 
 # WhatsApp session data
 frontend/.wwebjs_auth/

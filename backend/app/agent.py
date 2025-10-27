@@ -20,9 +20,7 @@ from tools.calendar_tool import (
 )
 from tools.email_tool import (
     read_emails_tool,
-    draft_email_tool,
-    send_draft_tool,
-    improve_draft_tool
+    create_user_email_tools  # Factory function for user-aware email tools
 )
 from tools.text_analyzer_tool import (
     summarize_text_tool,
@@ -268,34 +266,84 @@ Question: {input}
 Thought:{agent_scratchpad}"""
 
 
-def create_agent_prompt() -> PromptTemplate:
+def create_agent_prompt(user_id: str, db: Session) -> PromptTemplate:
     """
-    Create the agent prompt template
+    Create the agent prompt template for a specific user
+
+    Args:
+        user_id: WhatsApp user identifier
+        db: Database session for tools
 
     Returns:
-        PromptTemplate: Configured prompt template
+        PromptTemplate: Configured prompt template with user-specific tools
     """
+    tools = get_agent_tools(user_id, db)
     return PromptTemplate(
         template=AGENT_PROMPT_TEMPLATE,
         input_variables=["input", "chat_history", "agent_scratchpad"],
         partial_variables={
             "tools": "\n".join([
                 f"- {tool.name}: {tool.description}"
-                for tool in get_agent_tools()
+                for tool in tools
             ]),
-            "tool_names": ", ".join([tool.name for tool in get_agent_tools()])
+            "tool_names": ", ".join([tool.name for tool in tools])
         }
     )
 
 
-def get_agent_tools() -> List[Tool]:
+def get_agent_tools(user_id: str, db: Session) -> List[Tool]:
     """
-    Get list of tools available to the agent
+    Get list of tools available to the agent for a specific user
+
+    Args:
+        user_id: WhatsApp user identifier for user-aware tools
+        db: Database session for persistent storage
 
     Returns:
-        List[Tool]: Configured tools
+        List[Tool]: Configured tools with user context and database access
     """
     from langchain.tools import Tool as LangChainTool
+
+    # Create user-specific email tools with database persistence
+    draft_tool, send_tool, improve_tool, cancel_tool = create_user_email_tools(user_id, db)
+
+    # Wrap email tools with return_direct to prevent looping
+    # Draft workflow tools should return directly to user for approval
+    draft_tool_direct = LangChainTool(
+        name=draft_tool.name,
+        description=draft_tool.description,
+        func=draft_tool.func,
+        return_direct=True  # Return draft directly for user review
+    )
+
+    send_tool_direct = LangChainTool(
+        name=send_tool.name,
+        description=send_tool.description,
+        func=send_tool.func,
+        return_direct=True  # Return confirmation directly
+    )
+
+    improve_tool_direct = LangChainTool(
+        name=improve_tool.name,
+        description=improve_tool.description,
+        func=improve_tool.func,
+        return_direct=True  # Return improved draft directly
+    )
+
+    cancel_tool_direct = LangChainTool(
+        name=cancel_tool.name,
+        description=cancel_tool.description,
+        func=cancel_tool.func,
+        return_direct=True  # Return cancellation confirmation directly
+    )
+
+    # Wrap read_emails_tool with return_direct for efficiency
+    read_emails_direct = LangChainTool(
+        name=read_emails_tool.name,
+        description=read_emails_tool.description,
+        func=read_emails_tool.func,
+        return_direct=True  # Direct return for read operations
+    )
 
     # Create calendar tool with return_direct=True to prevent looping
     # This makes the tool return its result DIRECTLY to the user without agent processing
@@ -348,11 +396,13 @@ def get_agent_tools() -> List[Tool]:
         # Smart Calendar Tool (Returns directly - no looping)
         calendar_tool_direct,
 
-        # Email Tools
-        read_emails_tool,
-        draft_email_tool,
-        send_draft_tool,
-        improve_draft_tool,
+        # Email Tools (User-aware with bound user_id and database persistence)
+        # ALL email tools now return directly to prevent looping
+        read_emails_direct,    # Read emails (returns directly)
+        draft_tool_direct,     # User-specific draft tool (returns directly)
+        send_tool_direct,      # User-specific send tool (returns directly)
+        improve_tool_direct,   # User-specific improve tool (returns directly)
+        cancel_tool_direct,    # User-specific cancel tool (returns directly)
 
         # Text Analysis & Study Tools (Returns directly - no looping)
         summarize_direct,
@@ -403,14 +453,14 @@ class PersonalAssistantAgent:
         self.short_term_memory = get_short_term_memory(user_id)
         self.long_term_memory = get_long_term_memory(db, user_id)
 
-        # Initialize LLM and tools
+        # Initialize LLM and tools (user-specific with database)
         self.llm = create_llm()
-        self.tools = get_agent_tools()
+        self.tools = get_agent_tools(user_id, db)  # Pass user_id and db for user-aware tools
 
         # Create agent
         self.agent = self._create_agent()
 
-        logger.info(f"Initialized agent for user {user_id}")
+        logger.info(f"Initialized agent for user {user_id} with user-specific email tools and DB persistence")
 
     def _create_agent(self) -> AgentExecutor:
         """
@@ -419,8 +469,8 @@ class PersonalAssistantAgent:
         Returns:
             AgentExecutor: Configured agent executor
         """
-        # Create prompt
-        prompt = create_agent_prompt()
+        # Create prompt (with user-specific tools and database)
+        prompt = create_agent_prompt(self.user_id, self.db)
 
         # Create ReAct agent
         agent = create_react_agent(
@@ -522,6 +572,9 @@ class PersonalAssistantAgent:
                     'jelaskan' in message_lower):
                     is_document_follow_up = True
                     logger.info("Detected document-related follow-up question")
+
+            # Combine both follow-up types
+            is_follow_up = is_email_follow_up or is_document_follow_up
 
             context = ""
 

@@ -13,15 +13,29 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr, parseaddr
 from email.header import decode_header
-from typing import Dict, List
+from typing import Dict, List, Optional
 from config.settings import get_settings
+from sqlalchemy.orm import Session
 import re
 from datetime import datetime
+import base64
+import json
+import os  # Always import os for path operations
+
+# Gmail API imports
+try:
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+    from google.auth.transport.requests import Request
+    GMAIL_API_AVAILABLE = True
+except ImportError:
+    GMAIL_API_AVAILABLE = False
+    logger.warning("Gmail API libraries not installed. Gmail draft sync will be disabled.")
 
 settings = get_settings()
 
-# Global draft storage (user_id -> draft)
-_email_drafts: Dict[str, Dict] = {}
+# Database session will be injected via factory function
+# No more global in-memory storage
 
 
 # ============================================
@@ -215,11 +229,61 @@ def _get_email_body(msg) -> str:
 
 
 # ============================================
+# DATABASE HELPERS FOR EMAIL DRAFTS
+# ============================================
+
+def _get_active_draft(db: Session, user_id: str) -> Optional[object]:
+    """
+    Get the active (non-expired) draft for a user
+
+    Args:
+        db: Database session
+        user_id: WhatsApp user ID
+
+    Returns:
+        EmailDraft object or None
+    """
+    from models.email_draft import EmailDraft
+
+    # Get the most recent active draft that hasn't expired
+    draft = db.query(EmailDraft).filter(
+        EmailDraft.user_id == user_id,
+        EmailDraft.status == "draft",
+        EmailDraft.expires_at > datetime.utcnow()
+    ).order_by(EmailDraft.created_at.desc()).first()
+
+    return draft
+
+
+def _cleanup_expired_drafts(db: Session, user_id: str):
+    """
+    Clean up expired drafts for a user
+
+    Args:
+        db: Database session
+        user_id: WhatsApp user ID
+    """
+    from models.email_draft import EmailDraft
+
+    try:
+        expired_count = db.query(EmailDraft).filter(
+            EmailDraft.user_id == user_id,
+            EmailDraft.expires_at <= datetime.utcnow()
+        ).delete()
+
+        if expired_count > 0:
+            db.commit()
+            logger.info(f"Cleaned up {expired_count} expired drafts for user {user_id}")
+    except Exception as e:
+        logger.error(f"Error cleaning up expired drafts: {e}")
+        db.rollback()
+
+
+# ============================================
 # EMAIL DRAFTING (Stateful Workflow)
 # ============================================
 
-@tool
-def draft_email_tool(email_request: str, user_id: str = "default") -> str:
+def draft_email_tool(email_request: str, user_id: str, db: Session) -> str:
     """
     Create an email draft for user approval.
 
@@ -234,13 +298,26 @@ def draft_email_tool(email_request: str, user_id: str = "default") -> str:
 
     Args:
         email_request: Natural language email request
-        user_id: User identifier for stateful tracking
+        user_id: User identifier for stateful tracking (REQUIRED)
+        db: Database session (REQUIRED)
 
     Returns:
         str: Draft email for review
     """
+    from models.email_draft import EmailDraft
+
     try:
         logger.info(f"Creating email draft for user {user_id}")
+
+        # Clean up any expired drafts first
+        _cleanup_expired_drafts(db, user_id)
+
+        # Check if user already has an active draft
+        existing_draft = _get_active_draft(db, user_id)
+        if existing_draft:
+            logger.info(f"User {user_id} already has an active draft, marking it as cancelled")
+            existing_draft.status = "cancelled"
+            db.commit()
 
         # Parse email components
         email_data = _parse_email_request(email_request)
@@ -255,22 +332,40 @@ def draft_email_tool(email_request: str, user_id: str = "default") -> str:
                 email_data.get("subject", "")
             )
 
-        # Store draft
-        draft_id = f"draft_{user_id}_{datetime.now().timestamp()}"
-        _email_drafts[user_id] = {
-            "id": draft_id,
-            "to": email_data["to"],
-            "subject": email_data.get("subject", "Message from Personal Assistant"),
-            "body": email_data["body"],
-            "created_at": datetime.now().isoformat()
-        }
+        # Create Gmail draft first (real-time sync)
+        gmail_draft_id = _create_gmail_draft(
+            to_email=email_data["to"],
+            subject=email_data.get("subject", "Message from Personal Assistant"),
+            body=email_data["body"]
+        )
+
+        # Create draft in database (with Gmail draft ID if available)
+        draft = EmailDraft(
+            user_id=user_id,
+            to_email=email_data["to"],
+            subject=email_data.get("subject", "Message from Personal Assistant"),
+            body=email_data["body"],
+            gmail_draft_id=gmail_draft_id,  # Store Gmail draft ID
+            status="draft"
+        )
+
+        db.add(draft)
+        db.commit()
+        db.refresh(draft)
+
+        logger.info(f"Draft created with ID: {draft.id}" +
+                   (f" | Gmail: {gmail_draft_id}" if gmail_draft_id else ""))
 
         # Format response
-        draft = _email_drafts[user_id]
         response = f"📧 Email Draft Created:\n\n"
-        response += f"To: {draft['to']}\n"
-        response += f"Subject: {draft['subject']}\n\n"
-        response += f"Body:\n{draft['body']}\n\n"
+        response += f"To: {draft.to_email}\n"
+        response += f"Subject: {draft.subject}\n\n"
+        response += f"Body:\n{draft.body}\n\n"
+
+        # Add Gmail sync status
+        if gmail_draft_id:
+            response += "✉️ Also saved to your Gmail Drafts folder!\n\n"
+
         response += "---\n"
         response += "What would you like to do?\n"
         response += "• Say 'send it' to send this email\n"
@@ -281,11 +376,11 @@ def draft_email_tool(email_request: str, user_id: str = "default") -> str:
 
     except Exception as e:
         logger.error(f"Error creating draft: {e}")
+        db.rollback()
         return "I encountered an error creating the email draft. Please try again."
 
 
-@tool
-def send_draft_tool(user_id: str = "default") -> str:
+def send_draft_tool(user_id: str, db: Session) -> str:
     """
     Send the current email draft.
 
@@ -295,39 +390,53 @@ def send_draft_tool(user_id: str = "default") -> str:
     - "Approve and send"
 
     Args:
-        user_id: User identifier
+        user_id: User identifier (REQUIRED)
+        db: Database session (REQUIRED)
 
     Returns:
         str: Confirmation message
     """
     try:
-        if user_id not in _email_drafts:
+        # Get active draft from database
+        draft = _get_active_draft(db, user_id)
+
+        if not draft:
             return "No draft email found. Please create a draft first."
 
-        draft = _email_drafts[user_id]
+        # Try to send from Gmail draft first (preferred method)
+        result = False
+        sent_via = "SMTP"
 
-        # Send email
-        result = _send_email(
-            to_email=draft["to"],
-            subject=draft["subject"],
-            body=draft["body"]
-        )
+        if draft.gmail_draft_id:
+            result = _send_gmail_draft(draft.gmail_draft_id)
+            if result:
+                sent_via = "Gmail"
+
+        # Fallback to SMTP if Gmail sending failed or not available
+        if not result:
+            result = _send_email(
+                to_email=draft.to_email,
+                subject=draft.subject,
+                body=draft.body
+            )
 
         if result:
-            # Clear draft
-            del _email_drafts[user_id]
-            logger.info(f"Email sent successfully to {draft['to']}")
-            return f"✓ Email sent successfully to {draft['to']}!"
+            # Mark draft as sent
+            draft.status = "sent"
+            db.commit()
+
+            logger.info(f"Email sent successfully to {draft.to_email} via {sent_via}")
+            return f"✓ Email sent successfully to {draft.to_email}!"
         else:
             return "I encountered an error sending the email. Please check your email configuration."
 
     except Exception as e:
         logger.error(f"Error sending draft: {e}")
+        db.rollback()
         return "I couldn't send the email due to an error. Please try again."
 
 
-@tool
-def improve_draft_tool(improvement_request: str, user_id: str = "default") -> str:
+def improve_draft_tool(improvement_request: str, user_id: str, db: Session) -> str:
     """
     Improve the current email draft based on user feedback.
 
@@ -339,33 +448,54 @@ def improve_draft_tool(improvement_request: str, user_id: str = "default") -> st
 
     Args:
         improvement_request: What to improve
-        user_id: User identifier
+        user_id: User identifier (REQUIRED)
+        db: Database session (REQUIRED)
 
     Returns:
         str: Updated draft
     """
     try:
-        if user_id not in _email_drafts:
+        # Get active draft from database
+        draft = _get_active_draft(db, user_id)
+
+        if not draft:
             return "No draft email found. Please create a draft first."
 
-        draft = _email_drafts[user_id]
-
-        # Use LLM to improve draft
-        improved_body = _improve_email_body(
-            current_body=draft["body"],
+        # Use LLM to improve draft (may include subject change)
+        improved_body, new_subject = _improve_email_body(
+            current_body=draft.body,
             improvement_request=improvement_request,
-            subject=draft["subject"]
+            subject=draft.subject
         )
 
-        # Update draft
-        draft["body"] = improved_body
-        draft["updated_at"] = datetime.now().isoformat()
+        # Update draft in database
+        draft.body = improved_body
+        if new_subject:  # Update subject if it was changed
+            draft.subject = new_subject
+            logger.info(f"Subject changed to: {new_subject}")
+
+        draft.updated_at = datetime.utcnow()
+        draft.extend_expiry(hours=1)  # Extend expiry since user is still working on it
+
+        # Sync updates to Gmail draft (real-time)
+        if draft.gmail_draft_id:
+            _update_gmail_draft(
+                draft_id=draft.gmail_draft_id,
+                to_email=draft.to_email,
+                subject=draft.subject,
+                body=draft.body
+            )
+
+        db.commit()
+        db.refresh(draft)
+
+        logger.info(f"Draft {draft.id} improved for user {user_id}")
 
         # Format response
         response = f"📧 Updated Email Draft:\n\n"
-        response += f"To: {draft['to']}\n"
-        response += f"Subject: {draft['subject']}\n\n"
-        response += f"Body:\n{draft['body']}\n\n"
+        response += f"To: {draft.to_email}\n"
+        response += f"Subject: {draft.subject}\n\n"
+        response += f"Body:\n{draft.body}\n\n"
         response += "---\n"
         response += "What would you like to do?\n"
         response += "• Say 'send it' to send this email\n"
@@ -376,11 +506,11 @@ def improve_draft_tool(improvement_request: str, user_id: str = "default") -> st
 
     except Exception as e:
         logger.error(f"Error improving draft: {e}")
+        db.rollback()
         return "I encountered an error improving the draft. Please try again."
 
 
-@tool
-def cancel_draft_tool(user_id: str = "default") -> str:
+def cancel_draft_tool(user_id: str, db: Session) -> str:
     """
     Cancel and discard the current email draft.
 
@@ -390,15 +520,34 @@ def cancel_draft_tool(user_id: str = "default") -> str:
     - "Never mind"
 
     Args:
-        user_id: User identifier
+        user_id: User identifier (REQUIRED)
+        db: Database session (REQUIRED)
 
     Returns:
         str: Confirmation message
     """
-    if user_id in _email_drafts:
-        del _email_drafts[user_id]
+    try:
+        # Get active draft from database
+        draft = _get_active_draft(db, user_id)
+
+        if not draft:
+            return "No draft to cancel."
+
+        # Delete Gmail draft if exists
+        if draft.gmail_draft_id:
+            _delete_gmail_draft(draft.gmail_draft_id)
+
+        # Mark as cancelled
+        draft.status = "cancelled"
+        db.commit()
+
+        logger.info(f"Draft {draft.id} cancelled for user {user_id}")
         return "Email draft discarded."
-    return "No draft to cancel."
+
+    except Exception as e:
+        logger.error(f"Error cancelling draft: {e}")
+        db.rollback()
+        return "Error cancelling draft."
 
 
 # ============================================
@@ -474,8 +623,13 @@ def _generate_email_body(request: str, subject: str) -> str:
         return f"Regarding: {subject}\n\n{request}"
 
 
-def _improve_email_body(current_body: str, improvement_request: str, subject: str) -> str:
-    """Improve email body using LLM"""
+def _improve_email_body(current_body: str, improvement_request: str, subject: str) -> tuple:
+    """
+    Improve email body and/or subject using LLM
+
+    Returns:
+        tuple: (improved_body, new_subject_or_None)
+    """
     try:
         llm = ChatGroq(
             api_key=settings.groq_api_key,
@@ -483,27 +637,89 @@ def _improve_email_body(current_body: str, improvement_request: str, subject: st
             temperature=0.7
         )
 
-        prompt = f"""
-        Improve this email based on the feedback.
+        # Check if user wants to change subject
+        request_lower = improvement_request.lower()
+        wants_subject_change = any(keyword in request_lower for keyword in [
+            'subject', 'title', 'heading', 'change the subject', 'update subject', 'rename'
+        ])
 
-        Current email body:
-        {current_body}
+        if wants_subject_change:
+            prompt = f"""
+            You are helping improve an email draft. The user wants to make changes to the email.
 
-        Subject: {subject}
+            Current email:
+            Subject: {subject}
+            Body:
+            {current_body}
 
-        User feedback: {improvement_request}
+            User's requested changes: {improvement_request}
 
-        Write the improved email body (only the body, no To:/From:/Subject: lines):
-        """
+            IMPORTANT INSTRUCTIONS:
+            1. Apply ALL requested changes to the email body (time, location, name, etc.)
+            2. If the user specifies a new subject, extract it and use it EXACTLY
+            3. Keep the full email body - don't shorten it
+            4. Format your response EXACTLY as shown below
+
+            Return your response in this EXACT format:
+            SUBJECT: [new subject line here]
+            BODY:
+            [Complete improved email body with all requested changes]
+
+            Now write the improved email:
+            """
+        else:
+            prompt = f"""
+            You are helping improve an email draft body.
+
+            Current email body:
+            {current_body}
+
+            Subject: {subject}
+
+            User's requested changes: {improvement_request}
+
+            IMPORTANT INSTRUCTIONS:
+            1. Apply ALL requested changes to the email body (time, location, name, details, etc.)
+            2. Keep the email professional and complete
+            3. Include proper greeting, body, and closing
+            4. Write ONLY the improved email body (no To:/From:/Subject: lines)
+
+            Now write the improved email body:
+            """
 
         response = llm.invoke(prompt)
         improved = response.content if hasattr(response, 'content') else str(response)
+        improved = improved.strip()
 
-        return improved.strip()
+        # Parse response if subject change was requested
+        if wants_subject_change and 'SUBJECT:' in improved:
+            lines = improved.split('\n')
+            new_subject = None
+            body_lines = []
+            found_body = False
+
+            for line in lines:
+                if line.startswith('SUBJECT:'):
+                    new_subject = line.replace('SUBJECT:', '').strip()
+                elif line.startswith('BODY:'):
+                    found_body = True
+                    # Check if body content is on the same line
+                    body_on_same_line = line.replace('BODY:', '').strip()
+                    if body_on_same_line:
+                        body_lines.append(body_on_same_line)
+                elif found_body:
+                    body_lines.append(line)
+
+            if new_subject and body_lines:
+                improved_body = '\n'.join(body_lines).strip()
+                logger.info(f"Parsed improved body: {improved_body[:100]}...")  # Log first 100 chars
+                return (improved_body, new_subject)
+
+        return (improved, None)
 
     except Exception as e:
         logger.error(f"Error improving email: {e}")
-        return current_body  # Return unchanged if error
+        return (current_body, None)  # Return unchanged if error
 
 
 def _send_email(to_email: str, subject: str, body: str) -> bool:
@@ -547,3 +763,262 @@ def _send_email(to_email: str, subject: str, body: str) -> bool:
     except Exception as e:
         logger.error(f"Error sending email: {e}")
         return False
+
+
+# ============================================
+# GMAIL API HELPER FUNCTIONS
+# ============================================
+
+def _get_gmail_service():
+    """
+    Get Gmail API service
+
+    Returns Gmail API service object or None if not available
+    """
+    if not GMAIL_API_AVAILABLE:
+        return None
+
+    try:
+        creds = None
+        # Token file stores user's access and refresh tokens
+        token_path = settings.get_absolute_path("backend/config/gmail_token.json")
+        credentials_path = settings.google_calendar_credentials_file
+
+        if os.path.exists(token_path):
+            creds = Credentials.from_authorized_user_file(str(token_path), [
+                'https://www.googleapis.com/auth/gmail.compose',
+                'https://www.googleapis.com/auth/gmail.modify'
+            ])
+
+        # If no valid credentials, return None (user needs to authorize)
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                # Save refreshed credentials
+                with open(token_path, 'w') as token:
+                    token.write(creds.to_json())
+            else:
+                logger.warning("Gmail API credentials not found or invalid")
+                return None
+
+        return build('gmail', 'v1', credentials=creds)
+
+    except Exception as e:
+        logger.error(f"Error initializing Gmail API: {e}")
+        return None
+
+
+def _create_gmail_draft(to_email: str, subject: str, body: str) -> Optional[str]:
+    """
+    Create a draft in Gmail
+
+    Args:
+        to_email: Recipient email
+        subject: Email subject
+        body: Email body
+
+    Returns:
+        str: Gmail draft ID or None if failed
+    """
+    try:
+        service = _get_gmail_service()
+        if not service:
+            logger.warning("⚠️ Gmail API not available - draft will NOT sync to Gmail")
+            logger.info("To enable Gmail sync: 1) Install libraries 2) Configure OAuth 3) See GMAIL_DRAFT_INTEGRATION.md")
+            return None
+
+        # Create message
+        message = MIMEText(body)
+        message['to'] = to_email
+        message['subject'] = subject
+        message['from'] = settings.email_user
+
+        # Encode message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+
+        # Create draft
+        draft = service.users().drafts().create(
+            userId='me',
+            body={'message': {'raw': raw_message}}
+        ).execute()
+
+        draft_id = draft['id']
+        logger.info(f"✉️ Created Gmail draft: {draft_id}")
+
+        return draft_id
+
+    except Exception as e:
+        logger.error(f"Error creating Gmail draft: {e}")
+        return None
+
+
+def _update_gmail_draft(draft_id: str, to_email: str, subject: str, body: str) -> bool:
+    """
+    Update an existing Gmail draft
+
+    Args:
+        draft_id: Gmail draft ID
+        to_email: Recipient email
+        subject: Email subject
+        body: Email body
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        service = _get_gmail_service()
+        if not service:
+            return False
+
+        # Create updated message
+        message = MIMEText(body)
+        message['to'] = to_email
+        message['subject'] = subject
+        message['from'] = settings.email_user
+
+        # Encode message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+
+        # Update draft
+        service.users().drafts().update(
+            userId='me',
+            id=draft_id,
+            body={'message': {'raw': raw_message}}
+        ).execute()
+
+        logger.info(f"✉️ Updated Gmail draft: {draft_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error updating Gmail draft: {e}")
+        return False
+
+
+def _send_gmail_draft(draft_id: str) -> bool:
+    """
+    Send a Gmail draft
+
+    Args:
+        draft_id: Gmail draft ID
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        service = _get_gmail_service()
+        if not service:
+            return False
+
+        # Send the draft
+        service.users().drafts().send(
+            userId='me',
+            body={'id': draft_id}
+        ).execute()
+
+        logger.info(f"✉️ Sent Gmail draft: {draft_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error sending Gmail draft: {e}")
+        return False
+
+
+def _delete_gmail_draft(draft_id: str) -> bool:
+    """
+    Delete a Gmail draft
+
+    Args:
+        draft_id: Gmail draft ID
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        service = _get_gmail_service()
+        if not service:
+            return False
+
+        service.users().drafts().delete(
+            userId='me',
+            id=draft_id
+        ).execute()
+
+        logger.info(f"✉️ Deleted Gmail draft: {draft_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error deleting Gmail draft: {e}")
+        return False
+
+
+# ============================================
+# USER-AWARE TOOL FACTORY FUNCTIONS
+# ============================================
+
+def create_user_email_tools(user_id: str, db: Session) -> tuple:
+    """
+    Create user-specific email tools with bound user_id and database session.
+
+    This factory function solves the user isolation problem by creating
+    tool instances that automatically inject the WhatsApp user_id and
+    database session into all email operations, preventing cross-user
+    draft conflicts and enabling persistent draft storage.
+
+    Args:
+        user_id: WhatsApp user identifier (e.g., "1234567890@c.us")
+        db: Database session for persistent storage
+
+    Returns:
+        tuple: (draft_tool, send_tool, improve_tool, cancel_tool) all bound to user_id and db
+    """
+
+    # Create wrapper functions that bind user_id and db
+    # We use wrapper functions instead of functools.partial because
+    # LangChain's @tool decorator requires functions with __name__ attribute
+
+    def user_draft_tool(email_request: str) -> str:
+        """Create an email draft for user approval"""
+        return draft_email_tool(email_request, user_id, db)
+
+    def user_send_tool(input_text: str = "") -> str:
+        """Send the current email draft"""
+        # Agent may pass text like "Send the draft to X", but we ignore it
+        # We get the draft from database instead
+        return send_draft_tool(user_id, db)
+
+    def user_improve_tool(improvement_request: str) -> str:
+        """Improve the current email draft based on user feedback"""
+        return improve_draft_tool(improvement_request, user_id, db)
+
+    def user_cancel_tool(input_text: str = "") -> str:
+        """Cancel and discard the current email draft"""
+        # Agent may pass text, but we ignore it
+        return cancel_draft_tool(user_id, db)
+
+    # Wrap with @tool decorator
+    draft_tool_instance = tool(user_draft_tool)
+    send_tool_instance = tool(user_send_tool)
+    improve_tool_instance = tool(user_improve_tool)
+    cancel_tool_instance = tool(user_cancel_tool)
+
+    # Set proper names and descriptions from original functions
+    draft_tool_instance.name = "draft_email_tool"
+    draft_tool_instance.description = draft_email_tool.__doc__
+
+    send_tool_instance.name = "send_draft_tool"
+    send_tool_instance.description = send_draft_tool.__doc__
+
+    improve_tool_instance.name = "improve_draft_tool"
+    improve_tool_instance.description = improve_draft_tool.__doc__
+
+    cancel_tool_instance.name = "cancel_draft_tool"
+    cancel_tool_instance.description = cancel_draft_tool.__doc__
+
+    logger.info(f"Created user-aware email tools with DB persistence for user: {user_id}")
+
+    return (
+        draft_tool_instance,
+        send_tool_instance,
+        improve_tool_instance,
+        cancel_tool_instance
+    )
