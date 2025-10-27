@@ -50,7 +50,11 @@ A powerful AI-powered personal assistant accessible via WhatsApp, featuring cale
 ### Core Capabilities
 - **Conversational AI**: Natural language understanding powered by Groq's Mixtral 8x7b
 - **Calendar Management**: Create, update, and query Google Calendar events
-- **Email Composition**: Draft and send emails via Gmail or SMTP
+- **Email Management**:
+  - Draft, improve, send, and manage emails
+  - Multi-draft support with numbered selection
+  - Real-time Gmail sync (bidirectional)
+  - Keep drafts for later editing
 - **Resume Summarization**: Process and summarize professional information
 
 ### Memory System
@@ -90,12 +94,16 @@ agentic-personal-assistance/
 │   ├── tools/
 │   │   ├── __init__.py
 │   │   ├── calendar_tool.py   # Google Calendar integration
-│   │   ├── email_tool.py      # Email sending functionality
+│   │   ├── email_tool.py      # Email management with Gmail sync
 │   │   └── resume_tool.py     # Resume summarization
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── user.py            # User data models
+│   │   ├── email_draft.py     # Email draft models
 │   │   └── conversation.py    # Conversation models
+│   ├── scripts/
+│   │   ├── authorize_gmail.py # Gmail OAuth authorization
+│   │   └── migrate_gmail_draft_simple.py # Database migrations
 │   ├── config/
 │   │   ├── __init__.py
 │   │   └── settings.py        # Configuration management
@@ -133,6 +141,11 @@ agentic-personal-assistance/
 │   ├── ARCHITECTURE.md        # Detailed architecture
 │   └── API.md                 # API documentation
 │
+├── GMAIL_DRAFT_INTEGRATION.md # Gmail API setup guide
+├── KEEP_DRAFT_FEATURE.md      # Draft keep functionality
+├── DRAFT_MANAGEMENT_FEATURE.md # Draft listing & selection
+├── BIDIRECTIONAL_GMAIL_SYNC.md # Gmail sync implementation
+│
 ├── .env.example               # Environment variables template
 ├── .gitignore
 ├── README.md                  # This file
@@ -150,7 +163,8 @@ agentic-personal-assistance/
 ### API Keys Required
 - Groq API Key (from https://console.groq.com)
 - Google Calendar API credentials (optional)
-- Gmail/SMTP credentials
+- Gmail API OAuth credentials (for draft sync)
+- Gmail/SMTP credentials (for email sending)
 - Pipedream endpoint URL (for calendar integration)
 
 ## Installation
@@ -258,14 +272,30 @@ If using Google Calendar directly instead of Pipedream:
 5. Download credentials JSON
 6. Place in `backend/config/google_credentials.json`
 
-### 3. Gmail App Password
+### 3. Gmail Setup
 
-For email functionality:
-
+#### For Email Sending (SMTP):
 1. Enable 2-Factor Authentication on your Google account
 2. Go to App Passwords section
 3. Generate new app password for "Mail"
-4. Use this password in `.env` file
+4. Use this password in `.env` file as `EMAIL_PASSWORD`
+
+#### For Gmail Draft Sync (Optional but Recommended):
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create or select a project
+3. Enable Gmail API
+4. Create OAuth 2.0 credentials (Desktop app type)
+5. Download credentials JSON
+6. Save as `backend/config/google_credentials.json`
+7. Run authorization script:
+   ```bash
+   cd backend
+   python scripts/authorize_gmail.py
+   ```
+8. Follow browser prompts to authorize
+9. Token will be saved to `backend/config/gmail_token.json`
+
+See `GMAIL_DRAFT_INTEGRATION.md` for detailed setup instructions.
 
 ## Usage
 
@@ -307,10 +337,22 @@ Send messages to your WhatsApp number:
 "Create a reminder for Friday at 9 AM to submit report"
 ```
 
-**Email Composition:**
+**Email Management:**
 ```
-"Send an email to john@example.com about the meeting notes"
-"Draft an email to the team about the project update"
+# Create draft
+"Draft an email to john@example.com about the meeting"
+
+# Improve draft
+"Improve it, add meeting time 3 PM tomorrow"
+"Change subject to Project Meeting"
+
+# Manage multiple drafts
+"Show my drafts"
+"Select draft 2"
+"Send it"
+
+# Keep for later
+"Keep it"  # Saves draft to Gmail, extends expiry to 24 hours
 ```
 
 **Resume Summarization:**
