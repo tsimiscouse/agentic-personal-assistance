@@ -370,6 +370,7 @@ def draft_email_tool(email_request: str, user_id: str, db: Session) -> str:
         response += "What would you like to do?\n"
         response += "• Say 'send it' to send this email\n"
         response += "• Say 'improve it' to make changes\n"
+        response += "• Say 'keep it' to save and move to other topics\n"
         response += "• Say 'cancel' to discard\n"
 
         return response
@@ -500,6 +501,7 @@ def improve_draft_tool(improvement_request: str, user_id: str, db: Session) -> s
         response += "What would you like to do?\n"
         response += "• Say 'send it' to send this email\n"
         response += "• Say 'improve it again' for more changes\n"
+        response += "• Say 'keep it' to save and move to other topics\n"
         response += "• Say 'cancel' to discard\n"
 
         return response
@@ -548,6 +550,52 @@ def cancel_draft_tool(user_id: str, db: Session) -> str:
         logger.error(f"Error cancelling draft: {e}")
         db.rollback()
         return "Error cancelling draft."
+
+
+def keep_draft_tool(user_id: str, db: Session) -> str:
+    """
+    Keep the current draft in Gmail and allow user to move to other topics.
+
+    Usage:
+    - "Keep it"
+    - "Save the draft"
+    - "Keep it for later"
+
+    This marks the draft as "kept" so the user can continue using the chatbot
+    for other topics. The draft remains in Gmail Drafts folder for later editing/sending.
+
+    Args:
+        user_id: User identifier (REQUIRED)
+        db: Database session (REQUIRED)
+
+    Returns:
+        str: Confirmation message
+    """
+    try:
+        # Get active draft from database
+        draft = _get_active_draft(db, user_id)
+
+        if not draft:
+            return "No draft to keep."
+
+        # Mark as "kept" (not cancelled, just saved for later)
+        draft.status = "kept"
+        # Extend expiry to 24 hours instead of 1 hour
+        draft.extend_expiry(hours=24)
+        db.commit()
+
+        logger.info(f"Draft {draft.id} kept for user {user_id}")
+
+        response = "✓ Draft saved in your Gmail Drafts folder!\n\n"
+        response += "You can continue editing or send it later from Gmail.\n"
+        response += "What else can I help you with?"
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Error keeping draft: {e}")
+        db.rollback()
+        return "Error saving draft."
 
 
 # ============================================
@@ -969,7 +1017,7 @@ def create_user_email_tools(user_id: str, db: Session) -> tuple:
         db: Database session for persistent storage
 
     Returns:
-        tuple: (draft_tool, send_tool, improve_tool, cancel_tool) all bound to user_id and db
+        tuple: (draft_tool, send_tool, improve_tool, cancel_tool, keep_tool) all bound to user_id and db
     """
 
     # Create wrapper functions that bind user_id and db
@@ -995,11 +1043,17 @@ def create_user_email_tools(user_id: str, db: Session) -> tuple:
         # Agent may pass text, but we ignore it
         return cancel_draft_tool(user_id, db)
 
+    def user_keep_tool(input_text: str = "") -> str:
+        """Keep the draft in Gmail and move to other topics"""
+        # Agent may pass text, but we ignore it
+        return keep_draft_tool(user_id, db)
+
     # Wrap with @tool decorator
     draft_tool_instance = tool(user_draft_tool)
     send_tool_instance = tool(user_send_tool)
     improve_tool_instance = tool(user_improve_tool)
     cancel_tool_instance = tool(user_cancel_tool)
+    keep_tool_instance = tool(user_keep_tool)
 
     # Set proper names and descriptions from original functions
     draft_tool_instance.name = "draft_email_tool"
@@ -1014,11 +1068,15 @@ def create_user_email_tools(user_id: str, db: Session) -> tuple:
     cancel_tool_instance.name = "cancel_draft_tool"
     cancel_tool_instance.description = cancel_draft_tool.__doc__
 
+    keep_tool_instance.name = "keep_draft_tool"
+    keep_tool_instance.description = keep_draft_tool.__doc__
+
     logger.info(f"Created user-aware email tools with DB persistence for user: {user_id}")
 
     return (
         draft_tool_instance,
         send_tool_instance,
         improve_tool_instance,
-        cancel_tool_instance
+        cancel_tool_instance,
+        keep_tool_instance
     )
