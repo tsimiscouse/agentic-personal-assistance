@@ -598,6 +598,186 @@ def keep_draft_tool(user_id: str, db: Session) -> str:
         return "Error saving draft."
 
 
+def list_drafts_tool(user_id: str, db: Session) -> str:
+    """
+    List all active drafts (draft and kept status) for the user.
+
+    Usage:
+    - "Show my drafts"
+    - "List all drafts"
+    - "What drafts do I have?"
+
+    Returns a numbered list of drafts with:
+    - Draft number (for selection)
+    - Recipient email
+    - Subject
+    - Status (draft/kept)
+    - Created date
+
+    Args:
+        user_id: User identifier (REQUIRED)
+        db: Database session (REQUIRED)
+
+    Returns:
+        str: Formatted list of drafts or message if none exist
+    """
+    try:
+        from models.email_draft import EmailDraft
+
+        # Get all active drafts (both "draft" and "kept" status)
+        drafts = db.query(EmailDraft).filter(
+            EmailDraft.user_id == user_id,
+            EmailDraft.status.in_(["draft", "kept"]),
+            EmailDraft.expires_at > datetime.utcnow()
+        ).order_by(EmailDraft.created_at.desc()).all()
+
+        if not drafts:
+            return "You have no active drafts."
+
+        # Sync from Gmail: Update each draft with latest content from Gmail
+        synced_count = 0
+        for draft in drafts:
+            if draft.gmail_draft_id:
+                gmail_content = _fetch_gmail_draft(draft.gmail_draft_id)
+                if gmail_content:
+                    # Update database with Gmail content
+                    draft.to_email = gmail_content['to_email'] or draft.to_email
+                    draft.subject = gmail_content['subject'] or draft.subject
+                    draft.body = gmail_content['body'] or draft.body
+                    synced_count += 1
+
+        if synced_count > 0:
+            db.commit()
+            logger.info(f"📥 Synced {synced_count} drafts from Gmail for user {user_id}")
+
+        # Format response with numbered list
+        response = f"📧 You have {len(drafts)} active draft(s):\n\n"
+
+        for idx, draft in enumerate(drafts, 1):
+            # Format created date
+            created_str = draft.created_at.strftime("%b %d, %I:%M %p")
+
+            # Status emoji
+            status_emoji = "📝" if draft.status == "draft" else "💾"
+
+            response += f"{idx}. {status_emoji} To: {draft.to_email}\n"
+            response += f"   Subject: {draft.subject}\n"
+            response += f"   Created: {created_str}\n"
+            response += f"   Status: {draft.status}\n\n"
+
+        response += "---\n"
+        response += "What would you like to do?\n"
+        response += "• Say 'select draft 1' to work with a specific draft\n"
+
+        logger.info(f"Listed {len(drafts)} drafts for user {user_id}")
+        return response
+
+    except Exception as e:
+        logger.error(f"Error listing drafts: {e}")
+        return "Error retrieving drafts."
+
+
+def select_draft_tool(draft_number: str, user_id: str, db: Session) -> str:
+    """
+    Select a specific draft by number to view, edit, send, or manage.
+
+    Usage:
+    - "Select draft 1"
+    - "Open draft 1"
+
+    This makes the selected draft the "active" draft, allowing you to:
+    - View full content
+    - Send it
+    - Improve it
+    - Keep it
+    - Cancel it
+
+    Args:
+        draft_number: Draft number from the list (e.g., "1", "2", "3")
+        user_id: User identifier (REQUIRED)
+        db: Database session (REQUIRED)
+
+    Returns:
+        str: Full draft content with action options
+    """
+    try:
+        from models.email_draft import EmailDraft
+
+        # Parse draft number
+        try:
+            # Extract number from input like "draft 1", "select 1", "1"
+            import re
+            numbers = re.findall(r'\d+', draft_number)
+            if not numbers:
+                return "Please specify a draft number (e.g., 'select draft 1')"
+            idx = int(numbers[0])
+        except (ValueError, IndexError):
+            return "Invalid draft number. Please use a number (e.g., 'select draft 1')"
+
+        # Get all active drafts
+        drafts = db.query(EmailDraft).filter(
+            EmailDraft.user_id == user_id,
+            EmailDraft.status.in_(["draft", "kept"]),
+            EmailDraft.expires_at > datetime.utcnow()
+        ).order_by(EmailDraft.created_at.desc()).all()
+
+        if not drafts:
+            return "You have no active drafts."
+
+        if idx < 1 or idx > len(drafts):
+            return f"Invalid draft number. You have {len(drafts)} draft(s). Please select 1-{len(drafts)}."
+
+        # Get selected draft (idx is 1-based, list is 0-based)
+        selected_draft = drafts[idx - 1]
+
+        # Sync from Gmail: Fetch latest content from Gmail before showing
+        if selected_draft.gmail_draft_id:
+            gmail_content = _fetch_gmail_draft(selected_draft.gmail_draft_id)
+            if gmail_content:
+                # Update database with latest Gmail content
+                selected_draft.to_email = gmail_content['to_email'] or selected_draft.to_email
+                selected_draft.subject = gmail_content['subject'] or selected_draft.subject
+                selected_draft.body = gmail_content['body'] or selected_draft.body
+                logger.info(f"📥 Synced draft {selected_draft.id} from Gmail")
+
+        # First, cancel any other "draft" status drafts to make this one active
+        # This prevents conflicts when user tries to send/improve
+        db.query(EmailDraft).filter(
+            EmailDraft.user_id == user_id,
+            EmailDraft.status == "draft",
+            EmailDraft.id != selected_draft.id
+        ).update({"status": "cancelled"})
+
+        # Set selected draft to "draft" status (make it active)
+        selected_draft.status = "draft"
+        selected_draft.extend_expiry(hours=1)  # Reset expiry to 1 hour
+        db.commit()
+
+        # Format response
+        response = f"📧 Selected Draft #{idx}:\n\n"
+        response += f"To: {selected_draft.to_email}\n"
+        response += f"Subject: {selected_draft.subject}\n\n"
+        response += f"Body:\n{selected_draft.body}\n\n"
+
+        if selected_draft.gmail_draft_id:
+            response += "✉️ Synced with Gmail Drafts folder\n\n"
+
+        response += "---\n"
+        response += "What would you like to do?\n"
+        response += "• Say 'send it' to send this email\n"
+        response += "• Say 'improve it' to make changes\n"
+        response += "• Say 'keep it' to save and move to other topics\n"
+        response += "• Say 'cancel' to discard\n"
+
+        logger.info(f"Selected draft {selected_draft.id} (#{idx}) for user {user_id}")
+        return response
+
+    except Exception as e:
+        logger.error(f"Error selecting draft: {e}")
+        db.rollback()
+        return "Error selecting draft."
+
+
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
@@ -999,6 +1179,74 @@ def _delete_gmail_draft(draft_id: str) -> bool:
         return False
 
 
+def _fetch_gmail_draft(draft_id: str) -> Optional[dict]:
+    """
+    Fetch a draft from Gmail to sync latest changes
+
+    Args:
+        draft_id: Gmail draft ID
+
+    Returns:
+        dict: {'to_email': str, 'subject': str, 'body': str} or None if failed
+    """
+    try:
+        service = _get_gmail_service()
+        if not service:
+            return None
+
+        # Get the draft
+        draft = service.users().drafts().get(
+            userId='me',
+            id=draft_id,
+            format='raw'
+        ).execute()
+
+        # Decode the message
+        if 'message' not in draft:
+            logger.warning(f"No message found in Gmail draft: {draft_id}")
+            return None
+
+        msg_str = base64.urlsafe_b64decode(
+            draft['message']['raw'].encode('utf-8')
+        ).decode('utf-8')
+
+        # Parse the email
+        import email
+        msg = email.message_from_string(msg_str)
+
+        # Extract fields
+        to_email = msg.get('To', '')
+        subject = msg.get('Subject', '')
+
+        # Get body
+        body = ""
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == "text/plain":
+                    try:
+                        body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                        break
+                    except:
+                        pass
+        else:
+            try:
+                body = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
+            except:
+                body = str(msg.get_payload())
+
+        logger.info(f"📥 Fetched Gmail draft: {draft_id}")
+
+        return {
+            'to_email': to_email,
+            'subject': subject,
+            'body': body.strip()
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching Gmail draft: {e}")
+        return None
+
+
 # ============================================
 # USER-AWARE TOOL FACTORY FUNCTIONS
 # ============================================
@@ -1017,7 +1265,7 @@ def create_user_email_tools(user_id: str, db: Session) -> tuple:
         db: Database session for persistent storage
 
     Returns:
-        tuple: (draft_tool, send_tool, improve_tool, cancel_tool, keep_tool) all bound to user_id and db
+        tuple: (draft_tool, send_tool, improve_tool, cancel_tool, keep_tool, list_tool, select_tool) all bound to user_id and db
     """
 
     # Create wrapper functions that bind user_id and db
@@ -1048,12 +1296,23 @@ def create_user_email_tools(user_id: str, db: Session) -> tuple:
         # Agent may pass text, but we ignore it
         return keep_draft_tool(user_id, db)
 
+    def user_list_drafts_tool(input_text: str = "") -> str:
+        """List all active drafts for the user"""
+        # Agent may pass text, but we ignore it
+        return list_drafts_tool(user_id, db)
+
+    def user_select_draft_tool(draft_number: str) -> str:
+        """Select a specific draft by number to work with"""
+        return select_draft_tool(draft_number, user_id, db)
+
     # Wrap with @tool decorator
     draft_tool_instance = tool(user_draft_tool)
     send_tool_instance = tool(user_send_tool)
     improve_tool_instance = tool(user_improve_tool)
     cancel_tool_instance = tool(user_cancel_tool)
     keep_tool_instance = tool(user_keep_tool)
+    list_drafts_instance = tool(user_list_drafts_tool)
+    select_draft_instance = tool(user_select_draft_tool)
 
     # Set proper names and descriptions from original functions
     draft_tool_instance.name = "draft_email_tool"
@@ -1071,6 +1330,12 @@ def create_user_email_tools(user_id: str, db: Session) -> tuple:
     keep_tool_instance.name = "keep_draft_tool"
     keep_tool_instance.description = keep_draft_tool.__doc__
 
+    list_drafts_instance.name = "list_drafts_tool"
+    list_drafts_instance.description = list_drafts_tool.__doc__
+
+    select_draft_instance.name = "select_draft_tool"
+    select_draft_instance.description = select_draft_tool.__doc__
+
     logger.info(f"Created user-aware email tools with DB persistence for user: {user_id}")
 
     return (
@@ -1078,5 +1343,7 @@ def create_user_email_tools(user_id: str, db: Session) -> tuple:
         send_tool_instance,
         improve_tool_instance,
         cancel_tool_instance,
-        keep_tool_instance
+        keep_tool_instance,
+        list_drafts_instance,
+        select_draft_instance
     )

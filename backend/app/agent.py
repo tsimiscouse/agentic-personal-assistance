@@ -305,7 +305,7 @@ def get_agent_tools(user_id: str, db: Session) -> List[Tool]:
     from langchain.tools import Tool as LangChainTool
 
     # Create user-specific email tools with database persistence
-    draft_tool, send_tool, improve_tool, cancel_tool, keep_tool = create_user_email_tools(user_id, db)
+    draft_tool, send_tool, improve_tool, cancel_tool, keep_tool, list_drafts, select_draft = create_user_email_tools(user_id, db)
 
     # Wrap email tools with return_direct to prevent looping
     # Draft workflow tools should return directly to user for approval
@@ -342,6 +342,20 @@ def get_agent_tools(user_id: str, db: Session) -> List[Tool]:
         description=keep_tool.description,
         func=keep_tool.func,
         return_direct=True  # Return keep confirmation directly
+    )
+
+    list_drafts_direct = LangChainTool(
+        name=list_drafts.name,
+        description=list_drafts.description,
+        func=list_drafts.func,
+        return_direct=True  # Return draft list directly
+    )
+
+    select_draft_direct = LangChainTool(
+        name=select_draft.name,
+        description=select_draft.description,
+        func=select_draft.func,
+        return_direct=True  # Return selected draft directly
     )
 
     # Wrap read_emails_tool with return_direct for efficiency
@@ -411,6 +425,8 @@ def get_agent_tools(user_id: str, db: Session) -> List[Tool]:
         improve_tool_direct,   # User-specific improve tool (returns directly)
         keep_tool_direct,      # User-specific keep tool (returns directly)
         cancel_tool_direct,    # User-specific cancel tool (returns directly)
+        list_drafts_direct,    # List all user drafts (returns directly)
+        select_draft_direct,   # Select specific draft (returns directly)
 
         # Text Analysis & Study Tools (Returns directly - no looping)
         summarize_direct,
