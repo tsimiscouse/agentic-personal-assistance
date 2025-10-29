@@ -352,7 +352,8 @@ node src/index.js
 #### 3. WhatsApp Authentication
 
 On first run, a QR code will appear in the terminal:
-![QR Code for Authentication](demo/qr_code_setup.mp4)
+
+<img src="demo/qr_code_setup.jpeg" alt="QR Code for Authentication" width="600">
 1. Open WhatsApp on your phone
 2. Go to Settings > Linked Devices
 3. Tap "Link a Device"
@@ -404,11 +405,15 @@ The calendar tool integrates with Google Calendar to help you manage schedules, 
 
 #### 1.1 WhatsApp Chat - Creating Calendar Events
 
-![Calendar Tool - Chat Interface](demo/calendar-chat-demo.mp4)
+<video src="demo/calendar-chat-demo.mp4" width="600" controls>
+  Your browser doesn't support video playback. <a href="demo/calendar-chat-demo.mp4">Download the video</a>
+</video>
 
 #### 1.2 Google Calendar - Event Verification
 
-![Calendar Tool - Event Verification](demo/calendar-event-verification.mp4)
+<video src="demo/calendar-event-verification.mp4" width="600" controls>
+  Your browser doesn't support video playback. <a href="demo/calendar-event-verification.mp4">Download the video</a>
+</video>
 
 ---
 
@@ -418,11 +423,15 @@ The email tool provides comprehensive email management including drafting, impro
 
 #### 2.1 WhatsApp Chat - Email Workflow
 
-![Email Tool - Chat Interface](demo/email-chat-demo.mp4)
+<video src="demo/email-chat-demo.mp4" width="600" controls>
+  Your browser doesn't support video playback. <a href="demo/email-chat-demo.mp4">Download the video</a>
+</video>
 
 #### 2.2 Gmail - Draft Synchronization
 
-![Email Tool - Draft Synchronization](demo/email-draft-sync.mp4)
+<video src="demo/email-draft-sync.mp4" width="600" controls>
+  Your browser doesn't support video playback. <a href="demo/email-draft-sync.mp4">Download the video</a>
+</video>
 
 ---
 
@@ -430,7 +439,9 @@ The email tool provides comprehensive email management including drafting, impro
 
 The analyzer tool helps summarize or giving bullet points from a Documents (PPT/PDF/DOCX) or Text.
 
-![Analyzer Tool - Chat Interface](demo/analyzer-chat-demo.mp4)
+<video src="demo/analyzer-chat-demo.mp4" width="600" controls>
+  Your browser doesn't support video playback. <a href="demo/analyzer-chat-demo.mp4">Download the video</a>
+</video>
 
 
 ---
