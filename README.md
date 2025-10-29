@@ -353,7 +353,7 @@ node src/index.js
 
 On first run, a QR code will appear in the terminal:
 
-<img src="demo/qr_code_setup.jpeg" alt="QR Code for Authentication" width="600">
+<img src="demo/qr_code_setup.jpeg" alt="QR Code for Authentication" width="200">
 1. Open WhatsApp on your phone
 2. Go to Settings > Linked Devices
 3. Tap "Link a Device"
@@ -405,11 +405,11 @@ The calendar tool integrates with Google Calendar to help you manage schedules, 
 
 #### 1.1 WhatsApp Chat - Creating Calendar Events
 
-<img src="demo/calendar-chat-demo.gif" alt="Calendar Tool - Chat Interface" width="600">
+<img src="demo/calendar-chat-demo.gif" alt="Calendar Tool - Chat Interface" width="200">
 
 #### 1.2 Google Calendar - Event Verification
 
-<img src="demo/calendar-event-verification.gif" alt="Calendar Tool - Event Verification" width="600">
+<img src="demo/calendar-event-verification.gif" alt="Calendar Tool - Event Verification" width="200">
 
 ---
 
@@ -419,11 +419,11 @@ The email tool provides comprehensive email management including drafting, impro
 
 #### 2.1 WhatsApp Chat - Email Workflow
 
-<img src="demo/email-chat-demo.gif" alt="Email Tool - Chat Interface" width="600">
+<img src="demo/email-chat-demo.gif" alt="Email Tool - Chat Interface" width="200">
 
 #### 2.2 Gmail - Draft Synchronization
 
-<img src="demo/email-draft-sync.gif" alt="Email Tool - Draft Synchronization" width="600">
+<img src="demo/email-draft-sync.gif" alt="Email Tool - Draft Synchronization" width="200">
 
 ---
 
@@ -431,7 +431,7 @@ The email tool provides comprehensive email management including drafting, impro
 
 The analyzer tool helps summarize or giving bullet points from a Documents (PPT/PDF/DOCX) or Text.
 
-<img src="demo/analyzer-chat-demo.gif" alt="Analyzer Tool - Chat Interface" width="600">
+<img src="demo/analyzer-chat-demo.gif" alt="Analyzer Tool - Chat Interface" width="200">
 
 
 ---
