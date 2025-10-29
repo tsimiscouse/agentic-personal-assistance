@@ -2,6 +2,12 @@
 
 A powerful AI-powered personal assistant accessible via WhatsApp, featuring calendar management, email composition, and resume summarization capabilities. Built with a two-part architecture: Node.js frontend for WhatsApp interface and Python LangChain backend for intelligent agent processing.
 
+## Developer Team
+| Nama | NIM |
+|------|------|
+| **Muhammad Luthfi Attaqi** | 22/496427/TK/54387 |
+| **Varick Zahir Sarjiman** | 22/496418/TK/54384 |
+
 ## Architecture Overview
 
 ```
@@ -448,11 +454,5 @@ alembic downgrade -1
 - Groq for lightning-fast LLM inference
 - whatsapp-web.js for WhatsApp integration
 - FastAPI for the excellent Python web framework
-
-## Developer Team
-| Nama | NIM |
-|------|------|
-| **Muhammad Luthfi Attaqi** | 22/496427/TK/54387 |
-| **Varick Zahir Sarjiman** | 22/496418/TK/54384 |
 
 ---
