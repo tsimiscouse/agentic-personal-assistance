@@ -2,18 +2,11 @@
 
 A powerful AI-powered personal assistant accessible via WhatsApp, featuring calendar management, email composition, and resume summarization capabilities. Built with a two-part architecture: Node.js frontend for WhatsApp interface and Python LangChain backend for intelligent agent processing.
 
-## Table of Contents
-- [Architecture Overview](#architecture-overview)
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Development](#development)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
+## Developer Team
+| Nama | NIM |
+|------|------|
+| **Muhammad Luthfi Attaqi** | 22/496427/TK/54387 |
+| **Varick Zahir Sarjiman** | 22/496418/TK/54384 |
 
 ## Architecture Overview
 
@@ -26,7 +19,7 @@ A powerful AI-powered personal assistant accessible via WhatsApp, featuring cale
 └─────────────────┘         └─────────────────┘         └─────────────────┘
                                                                   │
                                                                   ├──> Groq LLM
-                                                                  │    (Mixtral 8x7b)
+                                                                  │    (llama-3.1-8b-instant)
                                                                   │
                                                                   ├──> PostgreSQL
                                                                   │    (Structured Data)
@@ -36,8 +29,7 @@ A powerful AI-powered personal assistant accessible via WhatsApp, featuring cale
                                                                   │
                                                                   └──> External APIs
                                                                        ├─ Google Calendar
-                                                                       ├─ Gmail/SMTP
-                                                                       └─ Pipedream
+                                                                       └─ Gmail/SMTP
 ```
 
 ### Two-Part Architecture
@@ -48,7 +40,7 @@ A powerful AI-powered personal assistant accessible via WhatsApp, featuring cale
 ## Features
 
 ### Core Capabilities
-- **Conversational AI**: Natural language understanding powered by Groq's Mixtral 8x7b
+- **Conversational AI**: Natural language understanding powered by Groq's llama-3.1-8b-instant
 - **Calendar Management**: Create, update, and query Google Calendar events
 - **Email Management**:
   - Draft, improve, send, and manage emails
@@ -75,7 +67,7 @@ A powerful AI-powered personal assistant accessible via WhatsApp, featuring cale
 ### Backend
 - **Framework**: FastAPI
 - **AI Framework**: LangChain
-- **LLM**: Groq API (Mixtral 8x7b)
+- **LLM**: Groq API (llama-3.1-8b-instant)
 - **Databases**:
   - PostgreSQL (structured data)
   - ChromaDB (vector embeddings)
@@ -102,8 +94,7 @@ agentic-personal-assistance/
 │   │   ├── email_draft.py     # Email draft models
 │   │   └── conversation.py    # Conversation models
 │   ├── scripts/
-│   │   ├── authorize_gmail.py # Gmail OAuth authorization
-│   │   └── migrate_gmail_draft_simple.py # Database migrations
+│   │   └── authorize_gmail.py # Gmail OAuth authorization
 │   ├── config/
 │   │   ├── __init__.py
 │   │   └── settings.py        # Configuration management
@@ -137,19 +128,9 @@ agentic-personal-assistance/
 ├── logs/                       # Application logs
 │   └── .gitkeep
 │
-├── docs/                       # Documentation
-│   ├── ARCHITECTURE.md        # Detailed architecture
-│   └── API.md                 # API documentation
-│
-├── GMAIL_DRAFT_INTEGRATION.md # Gmail API setup guide
-├── KEEP_DRAFT_FEATURE.md      # Draft keep functionality
-├── DRAFT_MANAGEMENT_FEATURE.md # Draft listing & selection
-├── BIDIRECTIONAL_GMAIL_SYNC.md # Gmail sync implementation
-│
 ├── .env.example               # Environment variables template
 ├── .gitignore
-├── README.md                  # This file
-└── CLAUDE.md                  # Context for Claude Code sessions
+└── README.md                  # This file
 
 ```
 
@@ -162,10 +143,9 @@ agentic-personal-assistance/
 
 ### API Keys Required
 - Groq API Key (from https://console.groq.com)
-- Google Calendar API credentials (optional)
+- Google Calendar API credentials (for scheduling)
 - Gmail API OAuth credentials (for draft sync)
 - Gmail/SMTP credentials (for email sending)
-- Pipedream endpoint URL (for calendar integration)
 
 ## Installation
 
@@ -231,39 +211,91 @@ cp .env.example .env
 Edit `.env` with your credentials:
 
 ```env
-# Backend API
+# Backend API Configuration
 BACKEND_API_URL=http://localhost:8000
 BACKEND_HOST=0.0.0.0
 BACKEND_PORT=8000
 
-# Groq API
+# Groq API Configuration
 GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.1-8b-instant
 
-# Database
-DATABASE_URL=postgresql://postgres:password@localhost:5432/whatsapp_assistant
+# Database Configuration (PostgreSQL)
+DATABASE_URL=postgresql://username:password@host:port/database_name
 
-# Vector Database
+# Database Pool Settings
+DB_POOL_SIZE=10
+DB_MAX_OVERFLOW=20
+
+# Vector Database Configuration (ChromaDB)
 CHROMA_PERSIST_DIRECTORY=../vector_store
+CHROMA_COLLECTION_NAME=whatsapp_conversations
+
+# Embedding Model for ChromaDB
+EMBEDDING_MODEL=sentence-transformers
+EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
 
 # Email Configuration
 EMAIL_SERVICE=gmail
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-specific-password
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_specific_password_here
 
-# Calendar Integration
-PIPEDREAM_CALENDAR_ENDPOINT=https://your-pipedream-endpoint.m.pipedream.net
+# SMTP Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_TLS=true
 
-# Logging
+# IMAP Configuration
+IMAP_HOST=imap.gmail.com
+IMAP_PORT=993
+
+# Calendar Integration (Google Calendar API)
+GOOGLE_CALENDAR_CREDENTIALS_FILE=backend/config/google_credentials.json
+GOOGLE_CALENDAR_ID=primary
+
+# Timezone Configuration
+# Examples: Asia/Jakarta (GMT+7/WIB), America/New_York (EST), Europe/London (GMT)
+DEFAULT_TIMEZONE=Asia/Jakarta
+
+# Logging Configuration
 LOG_LEVEL=INFO
 LOG_FILE=../logs/app.log
+LOG_MAX_BYTES=10485760
+LOG_BACKUP_COUNT=5
 
-# Security
-SECRET_KEY=your-secret-key-for-jwt
+# Security Configuration
+# Generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+SECRET_KEY=generate_your_own_secret_key_here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# CORS Configuration
+CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+
+# Rate Limiting
+RATE_LIMIT_PER_USER=30
+RATE_LIMIT_WINDOW_SECONDS=60
+
+# LangChain Agent Configuration
+MAX_AGENT_ITERATIONS=5
+MAX_RESPONSE_TOKENS=1000
+LLM_TEMPERATURE=0.1
+
+# Memory Configuration
+SHORT_TERM_MEMORY_SIZE=10
+LONG_TERM_MEMORY_RETRIEVAL_COUNT=5
+
+# Development/Production Mode
+ENVIRONMENT=development
+DEBUG=true
+
+# WhatsApp Frontend Configuration
+WHATSAPP_SESSION_NAME=whatsapp-assistant-session
+WHATSAPP_TIMEOUT=180000
+ALLOWED_WHATSAPP_NUMBERS=621234567890,6289876543210
 ```
 
-### 2. Google Calendar Setup (Optional)
-
-If using Google Calendar directly instead of Pipedream:
+### 2. Google Calendar Setup 
 
 1. Go to Google Cloud Console
 2. Create a new project
@@ -280,7 +312,7 @@ If using Google Calendar directly instead of Pipedream:
 3. Generate new app password for "Mail"
 4. Use this password in `.env` file as `EMAIL_PASSWORD`
 
-#### For Gmail Draft Sync (Optional but Recommended):
+#### For Gmail Draft Sync:
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create or select a project
 3. Enable Gmail API
@@ -294,8 +326,6 @@ If using Google Calendar directly instead of Pipedream:
    ```
 8. Follow browser prompts to authorize
 9. Token will be saved to `backend/config/gmail_token.json`
-
-See `GMAIL_DRAFT_INTEGRATION.md` for detailed setup instructions.
 
 ## Usage
 
@@ -322,6 +352,7 @@ node src/index.js
 #### 3. WhatsApp Authentication
 
 On first run, a QR code will appear in the terminal:
+![QR Code for Authentication](demo/qr_code_setup.mp4)
 1. Open WhatsApp on your phone
 2. Go to Settings > Linked Devices
 3. Tap "Link a Device"
@@ -361,182 +392,49 @@ Send messages to your WhatsApp number:
 for 3 years where I led the development of..."
 ```
 
-## Development
+### Demo & Example Usage
 
-### Backend Development
+This section provides visual demonstrations of the Personal Assistant WhatsApp Bot in action, showing real-world usage of each feature.
 
-The LangChain agent uses the ReAct (Reasoning + Acting) framework:
+---
 
-```python
-# agent.py structure
-1. Tool Definition (using @tool decorator)
-2. LLM Initialization (Groq)
-3. Memory Setup (Short-term + Long-term)
-4. Agent Creation (create_react_agent)
-5. Agent Execution Loop
-```
+### 1. Calendar Management Tool
 
-### Adding New Tools
+The calendar tool integrates with Google Calendar to help you manage schedules, create events, and set reminders through natural conversation.
 
-Create a new tool in `backend/tools/`:
+#### 1.1 WhatsApp Chat - Creating Calendar Events
 
-```python
-from langchain.tools import tool
+![Calendar Tool - Chat Interface](demo/calendar-chat-demo.mp4)
 
-@tool
-def my_custom_tool(input_text: str) -> str:
-    """Description of what this tool does."""
-    # Tool implementation
-    return result
-```
+#### 1.2 Google Calendar - Event Verification
 
-Register in `backend/app/agent.py`:
+![Calendar Tool - Event Verification](demo/calendar-event-verification.mp4)
 
-```python
-from tools.my_custom_tool import my_custom_tool
+---
 
-tools = [calendar_tool, email_tool, resume_tool, my_custom_tool]
-```
+### 2. Email Management Tool
 
-### Database Migrations
+The email tool provides comprehensive email management including drafting, improving, sending, and syncing with Gmail drafts.
 
-```bash
-# Create new migration
-alembic revision --autogenerate -m "description"
+#### 2.1 WhatsApp Chat - Email Workflow
 
-# Apply migration
-alembic upgrade head
+![Email Tool - Chat Interface](demo/email-chat-demo.mp4)
 
-# Rollback
-alembic downgrade -1
-```
+#### 2.2 Gmail - Draft Synchronization
 
-### Testing
+![Email Tool - Draft Synchronization](demo/email-draft-sync.mp4)
 
-```bash
-# Backend tests
-cd backend
-pytest
+---
 
-# Frontend tests
-cd frontend
-npm test
-```
+### 3. Text Analyzer Tool
 
-## Deployment
+The analyzer tool helps summarize or giving bullet points from a Documents (PPT/PDF/DOCX) or Text.
 
-### Docker Deployment (Recommended)
+![Analyzer Tool - Chat Interface](demo/analyzer-chat-demo.mp4)
 
-```bash
-# Build and run
-docker-compose up -d
 
-# View logs
-docker-compose logs -f
+---
 
-# Stop
-docker-compose down
-```
-
-### Manual Deployment
-
-#### Backend (Ubuntu/Linux Server)
-
-```bash
-# Install dependencies
-sudo apt update
-sudo apt install python3.10 python3.10-venv postgresql
-
-# Setup application
-cd backend
-python3.10 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Run with gunicorn
-gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-```
-
-#### Frontend (Process Manager)
-
-```bash
-# Install PM2
-npm install -g pm2
-
-# Start application
-cd frontend
-pm2 start src/index.js --name whatsapp-bot
-
-# Save configuration
-pm2 save
-pm2 startup
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### QR Code Not Appearing
-- Ensure terminal supports UTF-8
-- Try `npm install qrcode-terminal@latest`
-- Check firewall settings
-
-#### Backend Connection Failed
-- Verify `BACKEND_API_URL` in frontend `.env`
-- Check if backend is running on correct port
-- Test endpoint: `curl http://localhost:8000/health`
-
-#### Database Connection Error
-- Verify PostgreSQL is running: `pg_isready`
-- Check credentials in `.env`
-- Ensure database exists: `psql -l`
-
-#### Groq API Errors
-- Verify API key is valid
-- Check rate limits
-- Monitor usage at console.groq.com
-
-#### WhatsApp Disconnection
-- Re-scan QR code
-- Check WhatsApp app is updated
-- Clear `frontend/.wwebjs_auth` folder and restart
-
-### Logs
-
-Check application logs:
-
-```bash
-# Backend logs
-tail -f logs/app.log
-
-# Frontend logs (if using PM2)
-pm2 logs whatsapp-bot
-```
-
-## API Documentation
-
-When backend is running, visit:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-## Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature-name`
-3. Commit changes: `git commit -am 'Add feature'`
-4. Push to branch: `git push origin feature-name`
-5. Submit pull request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For issues and questions:
-- GitHub Issues: [Create an issue]
-- Documentation: See `docs/` folder
-- Email: your-email@example.com
 
 ## Acknowledgments
 
@@ -546,5 +444,3 @@ For issues and questions:
 - FastAPI for the excellent Python web framework
 
 ---
-
-**Note**: This is a personal assistant bot. Never share your API keys or credentials. Keep your `.env` file secure and never commit it to version control.
