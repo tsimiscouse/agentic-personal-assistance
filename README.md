@@ -405,15 +405,11 @@ The calendar tool integrates with Google Calendar to help you manage schedules, 
 
 #### 1.1 WhatsApp Chat - Creating Calendar Events
 
-<video src="demo/calendar-chat-demo.mp4" width="600" controls>
-  Your browser doesn't support video playback. <a href="demo/calendar-chat-demo.mp4">Download the video</a>
-</video>
+<img src="demo/calendar-chat-demo.gif" alt="Calendar Tool - Chat Interface" width="600">
 
 #### 1.2 Google Calendar - Event Verification
 
-<video src="demo/calendar-event-verification.mp4" width="600" controls>
-  Your browser doesn't support video playback. <a href="demo/calendar-event-verification.mp4">Download the video</a>
-</video>
+<img src="demo/calendar-event-verification.gif" alt="Calendar Tool - Event Verification" width="600">
 
 ---
 
@@ -423,15 +419,11 @@ The email tool provides comprehensive email management including drafting, impro
 
 #### 2.1 WhatsApp Chat - Email Workflow
 
-<video src="demo/email-chat-demo.mp4" width="600" controls>
-  Your browser doesn't support video playback. <a href="demo/email-chat-demo.mp4">Download the video</a>
-</video>
+<img src="demo/email-chat-demo.gif" alt="Email Tool - Chat Interface" width="600">
 
 #### 2.2 Gmail - Draft Synchronization
 
-<video src="demo/email-draft-sync.mp4" width="600" controls>
-  Your browser doesn't support video playback. <a href="demo/email-draft-sync.mp4">Download the video</a>
-</video>
+<img src="demo/email-draft-sync.gif" alt="Email Tool - Draft Synchronization" width="600">
 
 ---
 
@@ -439,9 +431,7 @@ The email tool provides comprehensive email management including drafting, impro
 
 The analyzer tool helps summarize or giving bullet points from a Documents (PPT/PDF/DOCX) or Text.
 
-<video src="demo/analyzer-chat-demo.mp4" width="600" controls>
-  Your browser doesn't support video playback. <a href="demo/analyzer-chat-demo.mp4">Download the video</a>
-</video>
+<img src="demo/analyzer-chat-demo.gif" alt="Analyzer Tool - Chat Interface" width="600">
 
 
 ---
