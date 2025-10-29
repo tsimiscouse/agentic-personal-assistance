@@ -352,6 +352,7 @@ node src/index.js
 #### 3. WhatsApp Authentication
 
 On first run, a QR code will appear in the terminal:
+![QR Code for Authentication](demo/qr_code_setup.mp4)
 1. Open WhatsApp on your phone
 2. Go to Settings > Linked Devices
 3. Tap "Link a Device"
@@ -391,62 +392,49 @@ Send messages to your WhatsApp number:
 for 3 years where I led the development of..."
 ```
 
-## Development
+## Demo & Example Usage
 
-### Backend Development
+This section provides visual demonstrations of the Personal Assistant WhatsApp Bot in action, showing real-world usage of each feature.
 
-The LangChain agent uses the ReAct (Reasoning + Acting) framework:
+---
 
-```python
-# agent.py structure
-1. Tool Definition (using @tool decorator)
-2. LLM Initialization (Groq)
-3. Memory Setup (Short-term + Long-term)
-4. Agent Creation (create_react_agent)
-5. Agent Execution Loop
-```
+### 1. Calendar Management Tool
 
-### Database Migrations
+The calendar tool integrates with Google Calendar to help you manage schedules, create events, and set reminders through natural conversation.
 
-```bash
-# Create new migration
-alembic revision --autogenerate -m "description"
+## 1.1 WhatsApp Chat - Creating Calendar Events
 
-# Apply migration
-alembic upgrade head
+![Calendar Tool - Chat Interface](demo/calendar-chat-demo.mp4)
 
-# Rollback
-alembic downgrade -1
-```
+## 1.2 Google Calendar - Event Verification
 
-## Troubleshooting
+![Calendar Tool - Event Verification](demo/calendar-event-verification.mp4)
 
-### Common Issues
+---
 
-#### QR Code Not Appearing
-- Ensure terminal supports UTF-8
-- Try `npm install qrcode-terminal@latest`
-- Check firewall settings
+### 2. Email Management Tool
 
-#### Backend Connection Failed
-- Verify `BACKEND_API_URL` in frontend `.env`
-- Check if backend is running on correct port
-- Test endpoint: `curl http://localhost:8000/health`
+The email tool provides comprehensive email management including drafting, improving, sending, and syncing with Gmail drafts.
 
-#### Database Connection Error
-- Verify PostgreSQL is running: `pg_isready`
-- Check credentials in `.env`
-- Ensure database exists: `psql -l`
+## 2.1 WhatsApp Chat - Email Workflow
 
-#### Groq API Errors
-- Verify API key is valid
-- Check rate limits
-- Monitor usage at console.groq.com
+![Email Tool - Chat Interface](demo/email-chat-demo.mp4)
 
-#### WhatsApp Disconnection
-- Re-scan QR code
-- Check WhatsApp app is updated
-- Clear `frontend/.wwebjs_auth` folder and restart
+## 2.2 Gmail - Draft Synchronization
+
+![Email Tool - Draft Synchronization](demo/email-draft-sync.mp4)
+
+---
+
+### 3. Text Analyzer Tool
+
+The analyzer tool helps summarize or giving bullet points from a Documents (PPT/PDF/DOCX) or Text.
+
+![Analyzer Tool - Chat Interface](demo/analyzer-chat-demo.mp4)
+
+
+---
+
 
 ## Acknowledgments
 
