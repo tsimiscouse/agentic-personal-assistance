@@ -392,7 +392,7 @@ Send messages to your WhatsApp number:
 for 3 years where I led the development of..."
 ```
 
-## Demo & Example Usage
+### Demo & Example Usage
 
 This section provides visual demonstrations of the Personal Assistant WhatsApp Bot in action, showing real-world usage of each feature.
 
@@ -402,11 +402,11 @@ This section provides visual demonstrations of the Personal Assistant WhatsApp B
 
 The calendar tool integrates with Google Calendar to help you manage schedules, create events, and set reminders through natural conversation.
 
-## 1.1 WhatsApp Chat - Creating Calendar Events
+#### 1.1 WhatsApp Chat - Creating Calendar Events
 
 ![Calendar Tool - Chat Interface](demo/calendar-chat-demo.mp4)
 
-## 1.2 Google Calendar - Event Verification
+#### 1.2 Google Calendar - Event Verification
 
 ![Calendar Tool - Event Verification](demo/calendar-event-verification.mp4)
 
@@ -416,11 +416,11 @@ The calendar tool integrates with Google Calendar to help you manage schedules, 
 
 The email tool provides comprehensive email management including drafting, improving, sending, and syncing with Gmail drafts.
 
-## 2.1 WhatsApp Chat - Email Workflow
+#### 2.1 WhatsApp Chat - Email Workflow
 
 ![Email Tool - Chat Interface](demo/email-chat-demo.mp4)
 
-## 2.2 Gmail - Draft Synchronization
+#### 2.2 Gmail - Draft Synchronization
 
 ![Email Tool - Draft Synchronization](demo/email-draft-sync.mp4)
 
