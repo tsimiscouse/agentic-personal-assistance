@@ -352,7 +352,9 @@ node src/index.js
 #### 3. WhatsApp Authentication
 
 On first run, a QR code will appear in the terminal:
-![QR Code for Authentication](demo/qr_code_setup.mp4)
+
+![QR Code for Authentication](demo/qr_code_setup.jpeg)
+
 1. Open WhatsApp on your phone
 2. Go to Settings > Linked Devices
 3. Tap "Link a Device"
