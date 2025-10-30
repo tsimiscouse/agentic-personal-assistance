@@ -1,0 +1,183 @@
+2025-10-29 14:19:46 | INFO     | app.main:lifespan - Starting Personal Assistant WhatsApp Bot backend...
+2025-10-29 14:19:46 | INFO     | database.connection:startup_db - Initializing database connections...
+2025-10-29 14:19:46 | INFO     | database.connection:init_db - Database tables initialized successfully
+2025-10-29 14:19:46 | INFO     | database.connection:_initialize_client - ChromaDB initialized successfully at C:\Users\ASUS\Projects\NLP\agentic-personal-assistance\agentic-personal-assistance\..\vector_store
+2025-10-29 14:19:46 | INFO     | database.connection:_initialize_client - Collection 'whatsapp_conversations' ready
+2025-10-29 14:19:46 | INFO     | database.connection:startup_db - All database connections initialized successfully
+2025-10-29 14:19:46 | INFO     | app.main:lifespan - Application started successfully
+2025-10-29 14:27:28 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:27:28 | INFO     | memory.short_term:get_short_term_memory - Creating new short-term memory for user 628118491177@c.us
+2025-10-29 14:27:30 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:27:30 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:27:30 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:27:30 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: Hello Olivia...
+2025-10-29 14:27:31 | INFO     | memory.long_term:search_similar_conversations - Found 3 similar conversations
+2025-10-29 14:27:31 | INFO     | app.agent:process_message - Using long-term memory for general question
+2025-10-29 14:27:32 | INFO     | memory.long_term:save_conversation - Saved conversation 1555574d-1870-4da2-bef2-9312214963e1 to long-term memory
+2025-10-29 14:27:32 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: 1555574d-1870-4da2-bef2-9312214963e1
+2025-10-29 14:27:50 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:27:52 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:27:53 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:27:53 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:27:53 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: Draft an email to varick.zahir@gmail.com about hom...
+2025-10-29 14:27:53 | INFO     | app.agent:process_message - Calendar/Email operation detected - using live API data only, skipping long-term memory
+2025-10-29 14:27:58 | INFO     | tools.email_tool:draft_email_tool - Creating email draft for user 628118491177@c.us
+2025-10-29 14:27:58 | INFO     | tools.email_tool:draft_email_tool - User 628118491177@c.us already has an active draft, marking it as cancelled
+2025-10-29 14:28:03 | INFO     | tools.email_tool:_create_gmail_draft - ✉️ Created Gmail draft: r5930483414999593338
+2025-10-29 14:28:03 | INFO     | tools.email_tool:draft_email_tool - Draft created with ID: d71e258c-4614-4ca3-8b78-b50274241ca1 | Gmail: r5930483414999593338
+2025-10-29 14:28:03 | INFO     | app.agent:process_message - Stored last operation context for user 628118491177@c.us: draft_email_tool
+2025-10-29 14:28:03 | INFO     | memory.long_term:save_conversation - Saved conversation 91c90ddd-9efa-49f9-92c3-f2e4f1674260 to long-term memory
+2025-10-29 14:28:03 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: 91c90ddd-9efa-49f9-92c3-f2e4f1674260
+2025-10-29 14:28:26 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:28:28 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:28:28 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:28:28 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:28:28 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: Improve it with my name Luthfi and the meeting at ...
+2025-10-29 14:28:28 | INFO     | app.agent:process_message - Calendar/Email operation detected - using live API data only, skipping long-term memory
+2025-10-29 14:28:52 | INFO     | tools.email_tool:_improve_email_body - Parsed improved body: Dear Varick,
+
+I am writing to invite you to a meeting to discuss your current homework assignments i...
+2025-10-29 14:28:52 | INFO     | tools.email_tool:improve_draft_tool - Subject changed to: NLP Homework meeting
+2025-10-29 14:28:54 | INFO     | tools.email_tool:_update_gmail_draft - ✉️ Updated Gmail draft: r5930483414999593338
+2025-10-29 14:28:54 | INFO     | tools.email_tool:improve_draft_tool - Draft d71e258c-4614-4ca3-8b78-b50274241ca1 improved for user 628118491177@c.us
+2025-10-29 14:28:54 | INFO     | app.agent:process_message - Stored last operation context for user 628118491177@c.us: improve_draft_tool
+2025-10-29 14:28:54 | INFO     | memory.long_term:save_conversation - Saved conversation ae555856-f9ab-4e6b-b6c3-1322bf0e77f4 to long-term memory
+2025-10-29 14:28:54 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: ae555856-f9ab-4e6b-b6c3-1322bf0e77f4
+2025-10-29 14:30:14 | INFO     | app.main:lifespan - Shutting down application...
+2025-10-29 14:30:14 | INFO     | database.connection:shutdown_db - Closing database connections...
+2025-10-29 14:30:14 | INFO     | database.connection:shutdown_db - Database connections closed
+2025-10-29 14:30:14 | INFO     | app.main:lifespan - Application shutdown complete
+2025-10-29 14:30:36 | INFO     | app.main:lifespan - Starting Personal Assistant WhatsApp Bot backend...
+2025-10-29 14:30:36 | INFO     | database.connection:startup_db - Initializing database connections...
+2025-10-29 14:30:36 | INFO     | database.connection:init_db - Database tables initialized successfully
+2025-10-29 14:30:36 | INFO     | database.connection:_initialize_client - ChromaDB initialized successfully at C:\Users\ASUS\Projects\NLP\agentic-personal-assistance\agentic-personal-assistance\..\vector_store
+2025-10-29 14:30:36 | INFO     | database.connection:_initialize_client - Collection 'whatsapp_conversations' ready
+2025-10-29 14:30:36 | INFO     | database.connection:startup_db - All database connections initialized successfully
+2025-10-29 14:30:36 | INFO     | app.main:lifespan - Application started successfully
+2025-10-29 14:31:35 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:31:35 | INFO     | memory.short_term:get_short_term_memory - Creating new short-term memory for user 628118491177@c.us
+2025-10-29 14:31:37 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:31:37 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:31:37 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:31:37 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: Hello Olivia...
+2025-10-29 14:31:38 | INFO     | memory.long_term:search_similar_conversations - Found 3 similar conversations
+2025-10-29 14:31:38 | INFO     | app.agent:process_message - Using long-term memory for general question
+2025-10-29 14:31:45 | INFO     | memory.long_term:save_conversation - Saved conversation 71a62a5a-a260-432b-8e47-24c13580edd0 to long-term memory
+2025-10-29 14:31:45 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: 71a62a5a-a260-432b-8e47-24c13580edd0
+2025-10-29 14:31:57 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:31:59 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:31:59 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:31:59 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:31:59 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: Draft an email to varick.zahir@gmail.com about hom...
+2025-10-29 14:31:59 | INFO     | app.agent:process_message - Calendar/Email operation detected - using live API data only, skipping long-term memory
+2025-10-29 14:32:08 | INFO     | tools.email_tool:draft_email_tool - Creating email draft for user 628118491177@c.us
+2025-10-29 14:32:08 | INFO     | tools.email_tool:draft_email_tool - User 628118491177@c.us already has an active draft, marking it as cancelled
+2025-10-29 14:32:13 | INFO     | tools.email_tool:_create_gmail_draft - ✉️ Created Gmail draft: r-7349599739011346352
+2025-10-29 14:32:13 | INFO     | tools.email_tool:draft_email_tool - Draft created with ID: c6fecb6d-e5f6-4ab3-add0-157f48d7ff94 | Gmail: r-7349599739011346352
+2025-10-29 14:32:13 | INFO     | app.agent:process_message - Stored last operation context for user 628118491177@c.us: draft_email_tool
+2025-10-29 14:32:13 | INFO     | memory.long_term:save_conversation - Saved conversation 2228a7f8-f506-4dad-9ccc-329103adb7ed to long-term memory
+2025-10-29 14:32:13 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: 2228a7f8-f506-4dad-9ccc-329103adb7ed
+2025-10-29 14:32:40 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:32:42 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:32:42 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:32:42 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:32:42 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: iImprove it with my name Luthfi and the meeting at...
+2025-10-29 14:32:42 | INFO     | app.agent:process_message - Calendar/Email operation detected - using live API data only, skipping long-term memory
+2025-10-29 14:32:58 | INFO     | tools.email_tool:_improve_email_body - Parsed improved body: Dear Varick,
+
+I am writing to schedule a meeting to discuss any difficulties or concerns you may be ...
+2025-10-29 14:32:58 | INFO     | tools.email_tool:improve_draft_tool - Subject changed to: NLP Homework Meeting
+2025-10-29 14:33:00 | INFO     | tools.email_tool:_update_gmail_draft - ✉️ Updated Gmail draft: r-7349599739011346352
+2025-10-29 14:33:00 | INFO     | tools.email_tool:improve_draft_tool - Draft c6fecb6d-e5f6-4ab3-add0-157f48d7ff94 improved for user 628118491177@c.us
+2025-10-29 14:33:00 | INFO     | app.agent:process_message - Stored last operation context for user 628118491177@c.us: improve_draft_tool
+2025-10-29 14:33:00 | INFO     | memory.long_term:save_conversation - Saved conversation 64c1afa5-a29f-427a-9fd0-35c463641d0a to long-term memory
+2025-10-29 14:33:00 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: 64c1afa5-a29f-427a-9fd0-35c463641d0a
+2025-10-29 14:33:30 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:33:32 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:33:32 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:33:32 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:33:32 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: Send it...
+2025-10-29 14:33:32 | INFO     | app.agent:process_message - Using last operation context for follow-up: improve_draft_tool
+2025-10-29 14:34:16 | INFO     | tools.email_tool:_send_gmail_draft - ✉️ Sent Gmail draft: r-7349599739011346352
+2025-10-29 14:34:16 | INFO     | tools.email_tool:send_draft_tool - Email sent successfully to varick.zahir@gmail.com via Gmail
+2025-10-29 14:34:16 | INFO     | app.agent:process_message - Stored last operation context for user 628118491177@c.us: send_draft_tool
+2025-10-29 14:34:16 | INFO     | memory.long_term:save_conversation - Saved conversation 70471b8a-b602-40f9-b074-3723b951aacd to long-term memory
+2025-10-29 14:34:16 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: 70471b8a-b602-40f9-b074-3723b951aacd
+2025-10-29 14:39:40 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:39:42 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:39:42 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:42:01 | INFO     | app.main:lifespan - Starting Personal Assistant WhatsApp Bot backend...
+2025-10-29 14:42:01 | INFO     | database.connection:startup_db - Initializing database connections...
+2025-10-29 14:42:01 | INFO     | database.connection:init_db - Database tables initialized successfully
+2025-10-29 14:42:01 | INFO     | database.connection:_initialize_client - ChromaDB initialized successfully at C:\Users\ASUS\Projects\NLP\agentic-personal-assistance\agentic-personal-assistance\..\vector_store
+2025-10-29 14:42:01 | INFO     | database.connection:_initialize_client - Collection 'whatsapp_conversations' ready
+2025-10-29 14:42:01 | INFO     | database.connection:startup_db - All database connections initialized successfully
+2025-10-29 14:42:01 | INFO     | app.main:lifespan - Application started successfully
+2025-10-29 14:42:33 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:42:33 | INFO     | memory.short_term:get_short_term_memory - Creating new short-term memory for user 628118491177@c.us
+2025-10-29 14:42:35 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:42:35 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:42:35 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:42:35 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: Hello Olivia...
+2025-10-29 14:42:36 | INFO     | memory.long_term:search_similar_conversations - Found 3 similar conversations
+2025-10-29 14:42:36 | INFO     | app.agent:process_message - Using long-term memory for general question
+2025-10-29 14:42:42 | INFO     | memory.long_term:save_conversation - Saved conversation 9812232c-f209-44ae-9017-fcc504129b2f to long-term memory
+2025-10-29 14:42:42 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: 9812232c-f209-44ae-9017-fcc504129b2f
+2025-10-29 14:43:17 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:43:17 | INFO     | app.main:chat - Processing file attachment: Computer Security Issues - 2.pptx
+2025-10-29 14:43:17 | INFO     | utils.file_extractor:extract_text_from_file - Extracting text from pptx file: Computer Security Issues - 2.pptx
+2025-10-29 14:43:17 | INFO     | utils.file_extractor:_extract_from_pptx - Extracted 5373 characters from PPTX (19 slides)
+2025-10-29 14:43:17 | INFO     | app.main:chat - Successfully extracted 5373 characters from PPTX
+2025-10-29 14:43:19 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:43:19 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:43:19 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:43:19 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: DOCUMENT CONTENT (from PPTX file "Computer Securit...
+2025-10-29 14:43:19 | INFO     | app.agent:process_message - Extracted document content: 5372 characters
+2025-10-29 14:43:19 | INFO     | memory.long_term:search_similar_conversations - Found 3 similar conversations
+2025-10-29 14:43:19 | INFO     | app.agent:process_message - Using long-term memory for general question
+2025-10-29 14:43:21 | INFO     | tools.text_analyzer_tool:summarize_text_tool - Summarizing text (4959 characters)
+2025-10-29 14:43:34 | INFO     | tools.text_analyzer_tool:summarize_text_tool - Summary generated successfully
+2025-10-29 14:43:34 | INFO     | app.agent:process_message - Stored document context for user 628118491177@c.us: 5372 chars, tool: summarize_text_tool
+2025-10-29 14:43:34 | INFO     | memory.long_term:save_conversation - Saved conversation dab8447d-35eb-4502-86ec-c2e24c670ad5 to long-term memory
+2025-10-29 14:43:34 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: dab8447d-35eb-4502-86ec-c2e24c670ad5
+2025-10-29 14:46:13 | INFO     | database.connection:startup_db - Initializing database connections...
+2025-10-29 14:46:13 | INFO     | database.connection:init_db - Database tables initialized successfully
+2025-10-29 14:46:13 | INFO     | database.connection:_initialize_client - ChromaDB initialized successfully at C:\Users\ASUS\Projects\NLP\agentic-personal-assistance\agentic-personal-assistance\..\vector_store
+2025-10-29 14:46:13 | INFO     | database.connection:_initialize_client - Collection 'whatsapp_conversations' ready
+2025-10-29 14:46:13 | INFO     | database.connection:startup_db - All database connections initialized successfully
+2025-10-29 14:46:13 | INFO     | app.main:lifespan - Application started successfully
+2025-10-29 14:46:41 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:46:41 | INFO     | memory.short_term:get_short_term_memory - Creating new short-term memory for user 628118491177@c.us
+2025-10-29 14:46:43 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:46:43 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:46:43 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:46:43 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: Hello Olivia...
+2025-10-29 14:46:44 | INFO     | memory.long_term:search_similar_conversations - Found 3 similar conversations
+2025-10-29 14:46:44 | INFO     | app.agent:process_message - Using long-term memory for general question
+2025-10-29 14:46:45 | INFO     | memory.long_term:save_conversation - Saved conversation f7693ced-9b43-4c49-b2b9-bae16b2bf70a to long-term memory
+2025-10-29 14:46:45 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: f7693ced-9b43-4c49-b2b9-bae16b2bf70a
+2025-10-29 14:47:47 | INFO     | app.main:chat - Received message from user 628118491177@c.us
+2025-10-29 14:47:49 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:47:49 | INFO     | tools.email_tool:create_user_email_tools - Created user-aware email tools with DB persistence for user: 628118491177@c.us
+2025-10-29 14:47:49 | INFO     | app.agent:__init__ - Initialized agent for user 628118491177@c.us with user-specific email tools and DB persistence
+2025-10-29 14:47:49 | INFO     | app.agent:process_message - Processing message from 628118491177@c.us: I want to do my NLP Homework at 1 November 18.00-2...
+2025-10-29 14:47:49 | INFO     | memory.long_term:search_similar_conversations - Found 3 similar conversations
+2025-10-29 14:47:49 | INFO     | app.agent:process_message - Using long-term memory for general question
+2025-10-29 14:47:51 | INFO     | tools.calendar_tool:smart_schedule_tool - Smart schedule request: Schedule NLP Homework on November 1st from 6-9 PM
+2025-10-29 14:47:59 | INFO     | tools.calendar_tool:_parse_event_with_llm - Successfully parsed event: NLP Homework
+2025-10-29 14:47:59 | INFO     | tools.calendar_tool:_smart_create - Parsed event: NLP Homework at 2025-11-01T18:00:00
+2025-10-29 14:48:02 | INFO     | tools.calendar_tool:_smart_create - Found 0 existing events on 2025-11-01
+2025-10-29 14:48:03 | INFO     | tools.calendar_tool:_smart_create - Event created: tl98g1i2j5lkerg9dk352m15q8
+2025-10-29 14:48:04 | INFO     | memory.long_term:save_conversation - Saved conversation 25152932-1653-4428-9bf6-ee2cdc88c11c to long-term memory
+2025-10-29 14:48:04 | INFO     | app.agent:process_message - Successfully processed message, conversation_id: 25152932-1653-4428-9bf6-ee2cdc88c11c
+2025-10-29 16:58:23 | INFO     | app.main:lifespan - Shutting down application...
+2025-10-29 16:58:23 | INFO     | database.connection:shutdown_db - Closing database connections...
+2025-10-29 16:58:23 | INFO     | database.connection:shutdown_db - Database connections closed
+2025-10-29 16:58:23 | INFO     | app.main:lifespan - Application shutdown complete
+2025-10-29 16:59:05 | INFO     | app.main:lifespan - Starting Personal Assistant WhatsApp Bot backend...
+2025-10-29 16:59:05 | INFO     | database.connection:startup_db - Initializing database connections...
+2025-10-29 16:59:05 | INFO     | database.connection:init_db - Database tables initialized successfully
+2025-10-29 16:59:06 | INFO     | database.connection:_initialize_client - ChromaDB initialized successfully at C:\Users\ASUS\Projects\NLP\agentic-personal-assistance\agentic-personal-assistance\..\vector_store
+2025-10-29 16:59:06 | INFO     | database.connection:_initialize_client - Collection 'whatsapp_conversations' ready
+2025-10-29 16:59:06 | INFO     | database.connection:startup_db - All database connections initialized successfully
+2025-10-29 16:59:06 | INFO     | app.main:lifespan - Application started successfully
